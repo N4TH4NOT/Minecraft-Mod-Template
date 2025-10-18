@@ -17,6 +17,9 @@
     "entrypoints": {
         "main": [
           "${group}.ExampleMod"
+        ],
+        "modmenu": [
+          "${group}.client.ModMenuIntegration"
         ]
     },
     "mixins": [
