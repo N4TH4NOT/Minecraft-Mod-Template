@@ -9,12 +9,6 @@ repositories {
         name = 'Terraformers'
         url = 'https://maven.terraformersmc.com/releases/'
     }
-
-    //Repo for Cloth Config
-    maven {
-        name = 'Shedaniel'
-        url = 'https://maven.shedaniel.me/'
-    }
 }
 
 dependencies {

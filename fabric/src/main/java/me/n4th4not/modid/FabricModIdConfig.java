@@ -4,6 +4,6 @@ import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 
 @Config(name = "modid")
-public class ModIdConfig
-    implements ConfigData {
+public class FabricModIdConfig
+    implements ConfigData, ModIdConfig {
 }

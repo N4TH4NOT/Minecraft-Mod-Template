@@ -7,7 +7,7 @@ import net.fabricmc.api.ModInitializer;
 public class ModId
     implements ModInitializer {
 
-    private static ModIdConfig CONFIG;
+    private static FabricModIdConfig CONFIG;
     
     @Override
     public void onInitialize() {
@@ -24,8 +24,8 @@ public class ModId
         AutoConfig.register(CONFIG.getClass(), GsonConfigSerializer::new);
     }
 
-    public static ModIdConfig getConfig() {
-        if (CONFIG == null) return CONFIG = AutoConfig.getConfigHolder(ModIdConfig.class).getConfig();
+    public static FabricModIdConfig getConfig() {
+        if (CONFIG == null) return CONFIG = AutoConfig.getConfigHolder(FabricModIdConfig.class).getConfig();
         return CONFIG;
     }
 }
