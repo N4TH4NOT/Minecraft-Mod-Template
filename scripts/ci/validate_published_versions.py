@@ -264,7 +264,7 @@ def verify_config(config, active, reader=None, **remote_options):
 
 def markdown_summary(report):
     statuses = {"checked": "✅ Checked", "failed": "❌ Failed",
-                "unverified": "⚠️ Unverified", "skipped": "⏭️ Skipped"}
+                "unverified": "⚠️ Unverified", "skipped": "⏩ Skipped"}
     lines = ["### Published version metadata", "", f"Result: **{report['result']}**", "",
              "| Property | Value | Status | Detail |", "| --- | --- | --- | --- |"]
     for entry in report["pins"]:

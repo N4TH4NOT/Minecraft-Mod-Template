@@ -43,7 +43,7 @@ class ScaffoldReportingTest(unittest.TestCase):
         self.assertEqual("failed", report["result"])
         self.assertEqual("skipped", report["tests"][0]["status"])
         self.assertEqual("Minestom is absent", report["tests"][0]["detail"])
-        self.assertIn("⚠️ Skipped", markdown_summary(report))
+        self.assertIn("⏩ Skipped", markdown_summary(report))
 
     def test_empty_suite_cannot_report_a_validation(self):
         report = run_suite(unittest.TestSuite(), stream=io.StringIO())

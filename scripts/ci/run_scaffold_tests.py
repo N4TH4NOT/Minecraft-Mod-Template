@@ -14,7 +14,7 @@ STATUS_LABELS = {
     "passed": "✅ Passed",
     "failed": "❌ Failed",
     "error": "❌ Error",
-    "skipped": "⚠️ Skipped",
+    "skipped": "⏩ Skipped",
     "expected_failure": "⚠️ Expected failure",
     "unexpected_success": "❌ Unexpected success",
 }
