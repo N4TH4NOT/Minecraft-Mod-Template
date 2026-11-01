@@ -26,9 +26,11 @@ neoForge {
         }
         client {
             client()
+            gameDirectory = file(templateProperty('run_client_directory'))
         }
         data {
             clientData()
+            gameDirectory = file(templateProperty('run_data_directory'))
 
             // DataGen can be run by - "./gradlew :neoforge:runData" in Terminal.
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
@@ -36,6 +38,7 @@ neoForge {
         }
         server {
             server()
+            gameDirectory = file(templateProperty('run_server_directory'))
         }
     }
     mods {
