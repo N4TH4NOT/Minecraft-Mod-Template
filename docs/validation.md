@@ -1,150 +1,107 @@
-# Validation adaptée à la nature du dépôt
+[English](validation.en.md) | **Français**
 
-La CI utilise le champ GitHub `repository.is_template` de l’événement,
-et non le nom du dépôt ou la présence supposée d’une application. Le dépôt
-template actuel est marqué comme tel sur GitHub. Un dépôt créé avec
-« Use this template » suit normalement le parcours projet.
+# Validation
 
-## Parcours template
+Toutes les compilations et tous les tests automatisés s’exécutent dans
+**GitHub Actions**, selon les [consignes du dépôt](AGENTS.fr.md).
 
-Un modèle peut ne contenir aucun code applicatif. La CI ne lui impose
-donc ni classes Java, ni compilation d’application, ni rapports JUnit
-applicatifs. Elle contrôle la structure et les fichiers de configuration
-nécessaires aux cibles déclarées, les propriétés, les ressources du modèle
-et les wrappers. Les placeholders des ressources sont normaux à ce stade.
+## Choisir le parcours CI
 
-Les tests unitaires Python des scripts de CI vérifient notamment la sélection du
-parcours, l’acceptation d’un template sans sources, ainsi que le refus de
-rapports de projet absents ou sans test exécuté. Ces contrôles ne sont pas
-présentés comme une compilation ou un essai de démarrage du produit.
+Dans GitHub, ouvrir **Actions → Validate template or build project → Run workflow**.
+Sélectionner la branche et la valeur de `repository_type` :
 
-Un job distinct exécute le vrai initialiseur Gradle sur des fixtures
-temporaires. Il vérifie le rendu des fichiers, l’identité du projet, la
-préservation des fichiers existants et l’idempotence. Il configure aussi
-deux modules sans sources pour vérifier les scripts centraux et le bilan
-avec réutilisation du cache.
+| Mode | Usage |
+| --- | --- |
+| `auto` | Utilise le champ GitHub `repository.is_template`. Un dépôt créé avec « Use this template » suit normalement le parcours projet. |
+| `template` | Valide le modèle, même sans sources Java applicatives. |
+| `project` | Compile et teste les cibles présentes. Permet aussi de vérifier les exemples du modèle sans changer le statut GitHub du dépôt. |
 
-Une autre fixture génère le véritable `common/` d’exemple, puis compile
-`CommonClass` et `PlatformContext` avec les conventions Java. Elle exécute
-leurs tests JUnit pour vérifier que l’initialisation appelle le prédicat
-fourni par la cible. Cette fixture est isolée : elle ne résout ni ne lance
-Minecraft ou un modloader. Il s’agit d’un test de contrat de l’API générée ;
-les applications et les artefacts du projet nécessitent le parcours projet.
+Vérifier le **mode** et le **SHA du commit** dans les résultats. Une CI template
+réussie ne valide pas les applications du parcours projet.
 
-Une fixture du build Minestom compile également les trois classes neutres
-partagées depuis `common/`. Elle n’inclut ni NeoForm, ni les ressources de
-mixins, ni la dépendance au moteur Minestom. Elle vérifie le partage Java
-de l’API ; le démarrage réel du serveur reste couvert par le parcours projet.
+## Vérifier le périmètre avant la compilation
 
-## Versions publiées
+Gradle et la CI lisent `modules`, `required_modules` et `standalone_modules`
+dans `gradle.properties`. `common/` est obligatoire ; supprimer un dossier
+cible, par exemple `forge/`, suffit à l’exclure. Garder au moins une cible
+applicative. Minestom conserve son build et son wrapper autonomes.
 
-Le job **Verify configured versions in official repositories** est requis
-avant la validation du template et les constructions des projets dérivés.
-Il lit `gradle.properties` sans le modifier et confirme l’existence des
-versions utilisées par les cibles configurées et présentes, y compris
-les dossiers vides à initialiser. Les cibles absentes sont exclues du contrôle.
+Les logs et la synthèse CI distinguent les dossiers absents, les cibles
+présentes et les compilations prévues. Gradle affiche aussi `reportBuildPlan`
+avant ses autres tâches, y compris après réutilisation du cache de configuration.
+Une tâche planifiée peut ensuite être évitée si ses sorties sont à jour ou
+récupérées depuis le cache.
 
-Seules les métadonnées textuelles de publication sont consultées :
+Un dossier cible présent, vide ou contenant seulement `.gitkeep`, est initialisé depuis les presets.
+La CI projet lance ce bootstrap avant la construction ; la validation du modèle
+vérifie les presets sans modifier les dossiers applicatifs.
 
-- POM Maven correspondant aux coordonnées et à la version de la dépendance ;
-- POM marqueur pour une version de plugin Gradle ;
-- manifeste et JSON de version officiels pour Minecraft ;
-- fichier SHA-256 officiel pour une distribution Gradle.
+## Contrôles du modèle
 
-Ce contrôle ne télécharge aucun JAR, ZIP, classe ou autre binaire, même
-partiellement. Il ne résout pas les dépendances transitives et n’ajoute
-aucune analyse de compatibilité ou sélection automatique de versions.
-Les contrôles Java, Gradle et Minecraft déjà présents restent séparés.
+Le parcours template contrôle les propriétés, scripts centraux, presets,
+ressources et wrappers. Les placeholders sont attendus ; aucune suite
+applicative ni aucun code Java applicatif n’est exigé.
 
-Les paramètres Java, les formats Minecraft et la version du futur produit
-sont identifiés comme des paramètres structurels : aucune publication du
-template lui-même n’est exigée. Une nouvelle propriété de version sans
-règle de recherche ne doit pas être approuvée silencieusement. Les versions
-fixes publiées peuvent être vérifiées ; les sélecteurs dynamiques et les
-snapshots mutables sont refusés.
+Les contrôles de l’outillage s’exécutent aussi en CI :
 
-Une version absente, des métadonnées invalides ou une vérification impossible
-à cause du réseau font échouer le contrôle. Les erreurs réseau ne valent
-pas absence de version et ne sont jamais considérées comme une réussite.
-Les reprises sont limitées aux erreurs transitoires, sans réutilisation
-d’une ancienne validation sur disque.
+- Les tests Python couvrent les décisions de CI et le refus des rapports de projet absents ou vides.
+- Les fixtures Gradle vérifient l’initialisation, la préservation des fichiers, l’idempotence et le bilan avec cache de configuration.
+- Une fixture compile les classes communes générées et teste le contrat `PlatformContext`, sans résoudre ni démarrer Minecraft ou un modloader.
+- Une fixture Minestom compile les trois classes Java neutres sélectionnées depuis `common/`, sans charger son projet NeoForm, ses ressources de mixins ou le moteur Minestom.
 
-Le rapport JSON **published-versions** est conservé même en cas d’échec.
-Il indique chaque propriété, son résultat, les URLs consultées et la raison
-des exclusions ou des échecs. La synthèse de l’exécution reprend ces résultats.
-Les tests unitaires de ce contrôleur utilisent des réponses simulées ;
-le job de vérification utilise les dépôts réels.
+Ces fixtures vérifient le modèle et l’API partagée. Elles ne remplacent pas
+la compilation complète ni les tests des applications.
 
-La publication des artefacts et leurs déclarations ne prouvent pas à elles
-seules la compatibilité de toutes les API avec le futur code du projet.
-Les compilations et tests du parcours projet restent nécessaires pour cela.
+La synthèse du job **Test Gradle scaffolding and generated shared context**
+affiche un statut par fixture : `✅ Passed`, `❌ Failed` / `Error`, `⚠️ Skipped`.
+L’artefact `scaffold-integration` conserve les logs et le rapport JSON avec
+les traces d’exception.
 
-## Parcours projet
+## Vérification des versions publiées
 
-La matrice est construite à partir de `modules`, `required_modules` et
-`standalone_modules` dans `gradle.properties`, également lus par Gradle,
-et des dossiers réellement présents. Supprimer `forge/`, par exemple,
-suffit à l’exclure. Les autres cibles restent disponibles. `common/` reste
-obligatoire. Conserver au moins une cible applicative.
+Le job **Verify configured versions in official repositories** précède la
+validation du modèle et les constructions applicatives. Il lit les versions
+fixes de `gradle.properties` pour les cibles déclarées et présentes, y compris
+les dossiers vides à initialiser. Les cibles absentes sont exclues.
 
-Le build autonome Minestom est détecté séparément du build multi-module
-des mods : il figure dans `modules` et `standalone_modules`.
+Il consulte uniquement les métadonnées textuelles officielles : POM Maven,
+POM marqueurs des plugins, manifeste JSON des versions Minecraft, et sommes
+SHA-256 des distributions Gradle. **Ce contrôle ne télécharge aucun JAR, ZIP
+ou autre binaire, même partiellement.** Il ne résout pas les dépendances
+transitives et ne choisit aucune version ou installation Java.
 
-Les JDK installés proviennent des propriétés centrales : runtime de Gradle,
-toolchain de chaque cible et JDK de `buildSrc`. La détection et le téléchargement
-implicites des toolchains sont désactivés dans les builds de CI. Les wrappers
-sont comparés aux versions et aux empreintes SHA-256 déclarées.
+La version du futur produit et les paramètres Java ou formats Minecraft sont
+traités séparément des versions de dépendances publiées. Une propriété de
+version sans règle de vérification, un sélecteur dynamique ou un SNAPSHOT
+mutable ne reçoit pas d’approbation silencieuse.
 
-Si un dossier présent est vide, la CI indique qu’il sera initialisé. En
-mode projet, elle lance le bootstrap avant la construction ; en mode template,
-elle vérifie les presets sans modifier les dossiers de l’application.
+Une version introuvable ou des métadonnées invalides font échouer le contrôle.
+Un problème réseau signifie « non vérifié », jamais « version absente » ou
+« validé » ; il bloque aussi l’approbation. Les reprises réseau sont limitées,
+sans réutilisation d’une ancienne validation sur disque.
 
-| Cible | Chaîne | Contrôles applicatifs |
-| --- | --- | --- |
-| Fabric / Forge / NeoForge | Java 21, wrapper racine Gradle 8 | Compilation, tests partagés et du loader, artefacts |
-| Minestom | Java 25, wrapper `minestom/` Gradle 9 | Compilation, démarrage/arrêt et protocole réseau, distribution |
+L’artefact **published-versions** conserve le rapport JSON, les URLs consultées,
+les exclusions et les motifs d’échec. Ses tests utilisent des réponses simulées ;
+le job consulte les dépôts réels. Une publication existante ne prouve pas à elle
+seule la compatibilité du code applicatif.
 
-Les tests des mods vérifient les ressources traitées et les
-points d’entrée. Les tests de `common/` vérifient le contrat du contexte et
-l’appel au prédicat fourni par la cible. Ils ne lancent pas un client ou
-serveur Minecraft. Le test Minestom lance réellement le moteur en local
-et vérifie aussi le contexte de plateforme transmis au code partagé.
+## Contrôles d’un projet
 
-Un projet sans code à compiler échoue avec une explication. Pour chaque
-suite applicative attendue, les rapports doivent exister et compter au
-moins un test exécuté, hors tests ignorés. Les échecs ne sont pas masqués.
-Les rapports sont conservés même en cas d’échec ; les artefacts doivent
-être présents après une construction réussie.
+La CI installe les JDK déclarés pour le runtime Gradle, `buildSrc` et les
+toolchains. La détection et le téléchargement implicites des toolchains sont
+désactivés. Les wrappers sont comparés aux versions et SHA-256 configurés.
 
-## Bilan avant la construction
+| Cible | Contrôles |
+| --- | --- |
+| Fabric, Forge, NeoForge | Compilation, tests de `common/` et du loader, ressources traitées, points d’entrée et artefacts. Les tests ne démarrent pas Minecraft. |
+| Minestom | Build autonome, contexte transmis au code partagé, démarrage et arrêt réels du serveur, génération du monde, protocole réseau et distribution. |
 
-Gradle affiche d’abord les modules présents et absents, puis la tâche
-`reportBuildPlan` présente les modules ayant des tâches Java de compilation
-dans le graphe réellement sélectionné. Elle précède les autres tâches et
-s’exécute aussi lorsque le cache de configuration est réutilisé. Minestom
-utilise le même rapport avec son build autonome.
+Après initialisation, le projet doit contenir du code à compiler. Chaque suite
+applicative attendue doit produire des rapports avec **au moins un test exécuté**,
+hors tests ignorés. Une suite vide ne valide rien. Les échecs restent visibles ;
+les rapports sont conservés même en cas d’échec et les artefacts sont requis après
+une construction réussie.
 
-Les modules présents sans compilation planifiée sont affichés séparément
-des dossiers absents. Une compilation planifiée peut ensuite être évitée
-par Gradle si ses sorties sont à jour ou récupérées depuis le cache.
-La CI publie le même périmètre avant ses constructions, dans les logs
-et dans la synthèse de l’exécution. En mode template, aucune compilation
-applicative n’est planifiée.
-
-## Déclenchement manuel
-
-Le workflow **Validate template or build project** propose `repository_type` :
-
-- `auto` utilise le statut GitHub du dépôt ;
-- `template` vérifie le modèle sans exiger de code applicatif ;
-- `project` force les constructions et tests des cibles présentes.
-
-Le mode `project` permet ainsi de vérifier les exemples fournis dans le
-template avant de les réutiliser. Il ne change pas le statut GitHub du
-dépôt. L’option `update_mod_versions` concerne uniquement la construction
-des mods ; elle est sans effet sur le parcours template et sur Minestom.
-
-Les compilations et tous les tests automatisés s’exécutent uniquement
-dans GitHub Actions, conformément aux consignes du dépôt. Une CI du
-parcours template réussie ne vaut pas validation des constructions du
-parcours projet : vérifier le mode et le SHA du commit dans les résultats.
+L’option manuelle `update_mod_versions` ne concerne que les builds de mods en
+mode `project`. Voir les [mises à jour](mises-a-jour.md) et la
+[configuration](configuration.md). Retour au [README](README.fr.md).

@@ -1,259 +1,146 @@
-# Consignes du dépôt
-
-Ces règles s’appliquent à toute contribution et aux échanges suivants.
-Les conserver lors de l’initialisation d’un projet depuis ce modèle.
-
-## Organisation
-
-Conserver l’organisation Gradle multi-module existante :
-
-- `common/` : code et ressources partagés entre les modloaders.
-- `fabric/` : code et ressources propres à Fabric.
-- `forge/` : code et ressources propres à Forge.
-- `neoforge/` : code et ressources propres à NeoForge.
-- `minestom/` : serveur Minestom autonome, avec son propre build et wrapper.
-- `buildSrc/src/main/groovy/` : conventions de compilation Gradle partagées.
-- `gradle/wrapper/`, `gradlew` et `gradlew.bat` : wrapper Gradle.
-
-Dans chaque module, conserver le code Java dans `src/main/java/` et les
-ressources dans `src/main/resources/`.
-
-Réserver un dossier aux tests automatisés de chaque modloader :
-
-- `fabric/src/test/java/` : tests propres à Fabric.
-- `forge/src/test/java/` : tests propres à Forge.
-- `neoforge/src/test/java/` : tests propres à NeoForge.
-- `minestom/src/test/java/` : tests du serveur Minestom.
-
-Placer les tests partagés dans `common/src/test/java/` si nécessaire, et les
-ressources de test dans `src/test/resources/` du module concerné. Conserver
-un fichier `.gitkeep` dans les dossiers de test vides pour les suivre dans Git.
-Ne pas créer de dossiers globaux `src/`, `resources/` ou `tests/` à la racine
-pour regrouper ces contenus.
-
-Les fichiers `settings.gradle`, `build.gradle` et `gradle.properties` restent
-à la racine. Centraliser les builds des cibles dans `gradle/modules/` et
-leurs paramètres et versions dans `gradle.properties`. `buildSrc/` conserve
-son build d’outillage. Respecter les emplacements de ressources générées.
-
-Minestom utilise Java 25 et son wrapper Gradle 9, séparément des mods sous
-Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
-`common/` dépend des classes Minecraft vanilla, absentes de Minestom.
-Son sourceSet partage uniquement les sources `Constants`, `CommonClass` et
-`PlatformContext` du package central `group`. Conserver ces trois classes
-indépendantes des API de moteur. Le build Minestom ne doit charger ni le
-projet `common/` avec NeoForm, ni les ressources de mixins.
-Les propriétés partagées restent centralisées dans `gradle.properties`.
-
-Les quatre cibles appellent directement `CommonClass.init` avec un
-`PlatformContext` :
-nom de plateforme, indicateur de développement et `Predicate<String>` pour
-consulter les mods chargés. Conserver ce passage explicite du contexte ;
-les appels aux API propres aux modloaders restent dans leurs modules.
-Minestom fournit un prédicat qui retourne toujours `false` et un mode de développement
-explicite, désactivé par défaut ; la tâche `run` lit `minestom_development`.
-
-`common/` est obligatoire. Les cibles `fabric/`, `forge/`, `neoforge/` et
-`minestom/` sont optionnelles : un dossier cible absent doit être exclu
-automatiquement de Gradle et de la CI. Déclarer `modules`, `required_modules`
-et `standalone_modules` dans `gradle.properties`, lus par ces deux outils.
-Un dossier présent utilise sa configuration centrale ; une cible entièrement
-vide ou contenant seulement `.gitkeep` est initialisée depuis `gradle/templates/`
-à la prochaine configuration Gradle. Ne jamais recréer une cible absente
-ni écraser des fichiers existants pendant cette initialisation.
-
-Les versions Java restent configurées explicitement : distinguer la JVM
-qui lance Gradle des toolchains de compilation. Ne pas ajouter d’analyse
-automatique des métadonnées ou du bytecode pour choisir Java.
-
-Si nécessaire, utiliser `docs/` pour la documentation, `scripts/` pour les
-scripts de maintenance et d’automatisation, et `work/` pour les brouillons,
-analyses et fichiers temporaires. Documenter les évolutions de l’arborescence
-dans `docs/organisation.md`.
-
-`README.md` et `AGENTS.md` sont les documents d’entrée à la racine.
-Les autres documents vont dans `docs/`. Les fichiers de configuration
-et de licence restent aux emplacements requis par leurs outils.
-
-Conserver les résultats de compilation dans les dossiers `build/` de Gradle.
-Ignorer dans Git ces sorties, les caches `.gradle/`, les répertoires
-d’exécution `run/` et `runs/`, ainsi que les fichiers temporaires.
-Ne jamais commiter de secrets.
-
-Garder les sources, ressources et tests dans leur module respectif,
-et centraliser la documentation complémentaire dans `docs/`.
-
-## Branches et commits
-
-Une fonctionnalité et ses correctifs, tests, documents et ajustements de CI
-restent sur une seule branche jusqu’à leur livraison.
-Ne pas créer une nouvelle branche pour chaque itération.
-
-Utiliser des préfixes décrivant la nature du travail :
-
-- `feat/` : fonctionnalité.
-- `fix/` : correctif indépendant.
-- `refactor/` : réorganisation.
-- `docs/` : documentation.
-- `test/` : tests.
-- `build/` : construction et dépendances.
-- `ci/` : intégration continue.
-- `chore/` : maintenance.
-
-Faire suivre le préfixe d’un nom descriptif.
-Ne pas préfixer les branches par le nom de l’agent.
-
-Écrire des commits ciblés selon la convention :
-
-`type(portee): description`
-
-La portée est facultative. Utiliser les mêmes types que pour les branches.
-Séparer les changements indépendants et éviter les gros commits mélangeant
-plusieurs sujets.
-
-Conserver les commits thématiques lors de la fusion, sauf demande contraire.
-Préserver les modifications existantes de l’utilisateur.
-
-## Identité Git
-
-Utiliser l’identité de l’agent qui effectue le travail, pour l’auteur
-comme pour le committer.
-
-Avant de commiter :
-
-- Vérifier l’origine de `user.name` et `user.email`.
-- Vérifier `git var GIT_AUTHOR_IDENT`.
-- Vérifier `git var GIT_COMMITTER_IDENT`.
-- Corriger si nécessaire la configuration locale du dépôt.
-
-Ne pas reprendre automatiquement l’identité personnelle de l’utilisateur
-héritée de l’environnement.
-Ne pas modifier sa configuration Git globale.
-
-## Compilation et validation
-
-Exécuter toutes les compilations et tous les tests automatisés dans
-GitHub Actions, jamais localement dans l’environnement de l’agent.
-
-Configurer les workflows pour les technologies et les cibles réellement
-utilisées. Conserver les rapports et les artefacts utiles.
-
-Adapter les contrôles à la nature du dépôt GitHub (`is_template`). Un
-template peut ne contenir aucun code applicatif : vérifier sa structure,
-ses configurations et son outillage sans exiger de compilation ni de
-tests applicatifs. Pour un projet dérivé, compiler les cibles présentes
-et vérifier leurs résultats de tests. Les tests des scripts de CI restent
-dans `scripts/ci/tests/` et s’exécutent eux aussi dans GitHub Actions.
-Les tests d’intégration dans `scripts/ci/integration/` exécutent Gradle sur
-des fixtures isolées pour valider l’initialisation et les builds centralisés,
-y compris le cache de configuration. Une fixture compile aussi le code
-commun d’exemple généré et exécute ses tests de contrat `PlatformContext`
-avec les seules conventions Java, sans résoudre ni lancer Minecraft ou
-un modloader. Une fixture vérifie aussi la sélection des trois sources
-communes dans Minestom, sans dépendance à son moteur.
-Ce contrôle ne vaut pas compilation complète ou validation
-des artefacts du produit. Il s’exécute uniquement dans GitHub Actions.
-
-Avant de lancer une construction, informer l’utilisateur des modules dont
-la compilation est prévue et des modules exclus. Afficher également ce
-bilan dans les logs Gradle et la synthèse GitHub Actions. Distinguer les
-dossiers absents des cibles présentes mais non sélectionnées.
-
-Vérifier les résultats du commit exact concerné.
-Distinguer les contrôles réussis, échoués, ignorés et non exécutés.
-
-Une suite vide ne constitue pas une validation.
-Ne pas désactiver une vérification ni affaiblir une assertion pour obtenir
-une CI verte.
-
-Avant de valider le template, confirmer aussi l’existence des versions
-configurées dans les métadonnées des dépôts officiels pour les cibles
-présentes. Ce contrôle ne doit télécharger aucun JAR, ZIP ou autre binaire,
-même partiellement. Il reste en lecture seule et ne remplace pas les versions. Conserver
-les sources et distinguer version introuvable de vérification impossible
-à cause du réseau ; ces deux cas empêchent l’approbation.
-
-Distinguer les vérifications automatisées des essais manuels.
-Ne jamais annoncer un essai manuel comme réalisé sans l’avoir effectué.
-
-Si l’accès GitHub ou une exécution est bloqué, préciser ce qui reste
-non vérifié.
-
-## Versionnement
-
-Appliquer Semantic Versioning 2.0.0 selon la nature du changement livré :
-
-- PATCH : correctif compatible.
-- MINOR : fonctionnalité compatible.
-- MAJOR : rupture du contrat public.
-
-Évaluer le résultat global de la branche par rapport à la dernière version
-normale livrée, et non selon le nombre de commits.
-
-Ne pas incrémenter automatiquement la version du produit pour chaque
-modification de documentation, de test ou de CI.
-
-La phase `0.y.z` reste explicitement instable.
-Ne pas déduire automatiquement le passage à `1.0.0` du nombre de fonctionnalités
-ou de commits.
-
-Centraliser la version pour éviter les divergences entre modules.
-Documenter les règles dans `docs/versionnement.md`.
-
-Choisir une version Minestom publiée pour la valeur exacte de
-`minecraft_version`. Ne pas utiliser la dernière version globale si elle
-cible un autre jeu, ni des sélecteurs dynamiques comme `latest.release`.
-
-Les préversions sont autorisées sur les branches de travail.
-
-Sur `main`, la valeur de version du produit doit contenir exactement
-trois entiers sans zéros initiaux :
-
-`MAJOR.MINOR.PATCH`
-
-Cette valeur ne doit contenir ni préfixe, ni suffixe de préversion,
-ni métadonnée de construction.
-
-Avant une fusion autorisée :
-
-1. Promouvoir la version normale sur la branche de travail.
-2. Obtenir une CI réussie pour ce commit précis.
-3. Fusionner le commit testé sans modifier ensuite sa version sur `main`.
-
-Ne jamais réutiliser le numéro d’un artefact déjà distribué
-pour un contenu différent.
-
-## Validation utilisateur et fusion
-
-Lorsque l’utilisateur déclare explicitement « le travail est terminé »,
-il atteste avoir vérifié et validé les modifications de la branche courante.
-
-Cette déclaration autorise, sans nouvelle confirmation :
-
-1. La fusion dans la branche principale.
-2. La suppression de la branche de travail locale et distante
-   après une fusion réussie.
-
-La simple citation de cette expression dans une instruction, une question
-ou un document ne constitue pas une déclaration de fin.
-Une CI verte seule ne constitue pas non plus cette validation.
-
-Avant la fusion autorisée, vérifier les contrôles du commit courant,
-résoudre les conflits éventuels et signaler tout blocage réel.
-
-## Initialisation et communication
-
-À la première utilisation du modèle, documenter les informations propres
-au projet : objectif, technologies, cibles, organisation et validation.
-
-Ne pas inventer une licence ou une visibilité de dépôt non renseignée.
-Adapter les workflows aux technologies choisies ; ne pas présenter
-des contrôles génériques comme une compilation ou des tests du produit.
-
-Appliquer durablement les préférences déjà enregistrées sans demander
-à l’utilisateur de les répéter.
-
-Expliquer clairement ce qui change, pourquoi, comment cela a été vérifié
-et ce qui reste à vérifier.
-
-Distinguer les propositions, les travaux réalisés et les résultats validés.
+# Repository instructions
+
+[English](AGENTS.md) · [Français](docs/AGENTS.fr.md)
+
+Apply these rules to contributions and future exchanges. Keep them when creating
+a project from this template.
+
+## Layout and build contracts
+
+| Path | Responsibility |
+| --- | --- |
+| `common/` | Shared mod sources, resources and tests |
+| `fabric/`, `forge/`, `neoforge/` | Loader-specific sources, resources and tests |
+| `minestom/` | Standalone server with its own settings and wrapper |
+| `gradle/modules/` | Central target build scripts |
+| `gradle/templates/`, `gradle/bootstrap/` | Starter files and initialization |
+| `buildSrc/` | Gradle conventions and build tooling |
+| `docs/`, `scripts/`, `work/` | Documentation, automation and temporary work |
+
+Keep Java in each module's `src/main/java/`, resources in `src/main/resources/`,
+tests in `src/test/java/` and test resources in `src/test/resources/`. Shared tests
+belong in `common/`. Track empty test directories with `.gitkeep`. Do not add
+root-level `src/`, `resources/` or `tests/` directories.
+
+Keep root `settings.gradle`, `build.gradle` and `gradle.properties`. Centralize
+versions, JDKs, modules and development settings in `gradle.properties`; keep
+`buildSrc/`'s own tooling build. Preserve generated-resource paths. Update both
+language versions of [the layout guide](docs/organisation.en.md) when paths change.
+
+`common/` is required. Optional target directories are excluded automatically
+when absent. `modules`, `required_modules` and `standalone_modules` drive Gradle
+and CI. Initialize only existing empty directories or those containing only
+`.gitkeep`, using `gradle/templates/`. Never recreate absent targets or overwrite
+existing files during initialization.
+
+Keep mods on Java 21 / Gradle 8 and Minestom on Java 25 / Gradle 9 in separate
+builds. The Minestom source set compiles only `Constants`, `CommonClass` and
+`PlatformContext` from the configured `group` package in `common/`. Keep these
+three classes engine-independent; do not load common's NeoForm build or mixin
+resources into Minestom. Other common classes may use vanilla Minecraft APIs.
+
+All four targets pass `PlatformContext` explicitly to `CommonClass.init`.
+Loader API calls stay in their target modules. Minestom's mod lookup always
+returns `false`; its development flag is explicit and defaults to `false`.
+Gradle `run` reads `minestom_development`.
+
+Configure Java versions explicitly. Distinguish Gradle's runtime JVM from
+compiler toolchains; do not infer Java versions from metadata or bytecode.
+
+Keep `README.md` and `AGENTS.md` as English entry points at the root. Store their
+French versions in `docs/`; other guides remain in `docs/` with English/French
+counterparts and reciprocal language links. Keep technical changes synchronized
+between translations. Configuration and license files stay where tools expect them.
+
+Keep build outputs in `build/`. Ignore `.gradle/`, `run/`, `runs/` and temporary
+files. Never commit secrets. Preserve the user's existing changes.
+
+## Branches and commits
+
+Keep a feature, its fixes, tests, docs and CI adjustments on one branch until
+delivery. Use descriptive branch names with `feat/`, `fix/`, `refactor/`, `docs/`,
+`test/`, `build/`, `ci/` or `chore/`; do not prefix them with an agent name.
+
+Write focused commits as `type(scope): subject`, with an optional scope and the
+same types as branches. **Commit subjects and bodies must be in English only.**
+Separate independent changes and retain thematic commits during merges unless
+asked otherwise.
+
+Use the working agent's identity for both author and committer. Before each
+commit, check the origins of `user.name` and `user.email`, then run
+`git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT`. Correct local
+repository configuration if needed. Do not reuse an inherited personal identity
+or change the user's global Git configuration.
+
+## Validation
+
+Run **all builds and automated tests in GitHub Actions**, never locally in the
+agent environment. Match workflows to actual technologies and present targets;
+retain useful reports and artifacts.
+
+- Template mode uses GitHub `repository.is_template`: application code and
+  application test reports may be absent. Validate configuration and tooling.
+- Project mode builds present targets and requires executed tests and artifacts.
+  An absent, empty or entirely skipped suite is not validation.
+- CI tooling tests belong in `scripts/ci/tests/`. Gradle integration tests in
+  `scripts/ci/integration/` use isolated fixtures for initialization, central
+  builds, configuration-cache reuse and shared Java contracts. Their common and
+  Minestom fixtures do not resolve or start game engines and do not validate
+  complete application artifacts.
+
+Before a build, report modules scheduled for compilation, absent targets and
+present targets not selected. Show the same scope in Gradle logs and the Actions
+summary, including when the configuration cache is reused.
+
+Check the exact commit's results. Distinguish passed, failed, skipped and
+unexecuted checks. Do not weaken assertions or disable checks to get green CI.
+Separate automated evidence from manual testing; never claim an unperformed test.
+Report any validation blocked by GitHub access or execution failures.
+
+Before approving the template, verify configured active versions against official
+publication metadata. This read-only check must not modify versions or download
+any JAR, ZIP or other binary, even partially. Preserve source URLs. Distinguish
+missing versions from network failures; both block approval. A publication check
+does not prove API compatibility.
+
+## Versioning
+
+Use Semantic Versioning 2.0.0: PATCH for compatible fixes, MINOR for compatible
+features and MAJOR for public API breaks. Assess the whole branch against the
+last normal release; do not bump for every commit or automatically for docs,
+tests or CI. `0.y.z` remains unstable; feature counts do not imply `1.0.0`.
+
+Centralize the product version in `gradle.properties`. Never reuse a distributed
+artifact version for different content. Select a published Minestom version for
+the exact `minecraft_version`, not the latest global release or a dynamic selector.
+See [versioning](docs/versionnement.en.md).
+
+Prereleases are allowed on work branches. On `main`, the product version must be
+exactly `MAJOR.MINOR.PATCH`: three integers without leading zeros, prefixes,
+prerelease suffixes or build metadata. Before an authorized merge:
+
+1. Promote the normal version on the work branch.
+2. Obtain successful CI for that exact commit.
+3. Merge the tested commit without changing its version afterward on `main`.
+
+## User validation and merging
+
+The user's explicit declaration **« le travail est terminé »** confirms their
+review of the current branch and authorizes merging into the main branch, then
+deleting the local and remote work branch after a successful merge. Quoting the
+phrase in a question or instruction is not authorization. Green CI alone is not
+user validation. Before an authorized merge, check current results, resolve
+conflicts and report actual blockers.
+
+## Documentation and communication
+
+Write for developers, including juniors. Lead with the technical action or
+result, use concrete commands and examples, and explain unfamiliar terms briefly.
+Remove repetition, conversational history and filler. Keep constraints and
+validation limits explicit.
+
+On first template use, document the project's objective, technologies, targets,
+layout and validation. Do not invent a license or repository visibility. Do not
+present generic checks as product builds or tests. Apply recorded preferences
+without asking the user to repeat them. Clearly distinguish proposed changes,
+implemented changes, validated results and remaining checks.

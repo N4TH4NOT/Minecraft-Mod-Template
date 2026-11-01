@@ -1,15 +1,37 @@
-# Configuration Minecraft 1.21.10
+[English](configuration.en.md) | [Français](configuration.md)
 
-Cette branche cible uniquement Minecraft 1.21.10, avec Java 21 pour les
-modloaders et Java 25 pour le serveur Minestom autonome.
-Les descripteurs Fabric, Forge et NeoForge excluent les versions suivantes
-du jeu, dont la compatibilité n’est pas établie.
+# Configuration de Minecraft 1.21.10
 
-## Dépendances du mod
+[`gradle.properties`](../gradle.properties) centralise l’identité du projet,
+les modules, les versions et les paramètres de développement. Les scripts
+des cibles se trouvent dans `gradle/modules/` ; leurs sources et sorties
+restent dans les dossiers des modules.
 
-| Composant | Version retenue |
+## Java et Gradle
+
+| Cible | JDK | Wrapper Gradle |
+| --- | --- | --- |
+| `common`, Fabric, Forge, NeoForge | 21 | 8.14.6 à la racine |
+| Minestom autonome | 25 | 9.1.0 dans `minestom/` |
+
+`<module>_java_version` règle le compilateur d’une cible, avec `java_version`
+comme défaut. `gradle_java_version` et `minestom_gradle_java_version` règlent
+la JVM qui exécute chaque build. Ce sont deux rôles distincts : changer
+le compilateur ne change pas automatiquement la JVM de Gradle.
+
+ForgeGradle 6 exige Gradle inférieur à 9. Java 25 nécessite Gradle 9.1 ou
+plus récent, d’où le build Minestom séparé. Les distributions des wrappers
+sont protégées par les propriétés `*_distribution_sha256`. Les tâches
+de mise à jour des wrappers lisent les versions centrales ; voir
+[le développement](developpement.md).
+
+## Versions retenues
+
+Cette branche cible exactement Minecraft **1.21.10**. Les descripteurs des
+mods excluent les versions suivantes du jeu.
+
+| Dépendance | Version |
 | --- | --- |
-| Minecraft | 1.21.10 |
 | Fabric Loader | 0.20.1 |
 | Fabric API | 0.138.4+1.21.10 |
 | Forge | 60.1.18 |
@@ -20,74 +42,47 @@ du jeu, dont la compatibilité n’est pas établie.
 | Mod Menu | 16.0.1 |
 | Mixin | 0.8.7 |
 | MixinExtras | 0.5.5 |
-| Minestom (serveur autonome) | 2025.12.19-1.21.10 |
+| Minestom | 2025.12.19-1.21.10 |
 
-Versions contrôlées dans les métadonnées Maven officielles :
-[Fabric Loader](https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml),
-[Fabric API](https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml),
-[Forge](https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml),
-[NeoForge](https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml),
-[Cloth Config](https://maven.shedaniel.me/me/shedaniel/cloth/cloth-config-fabric/maven-metadata.xml)
-et [Mod Menu](https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/maven-metadata.xml).
-Le [MDK NeoForge 1.21.10](https://github.com/NeoForgeMDKs/MDK-1.21.10-ModDevGradle)
-confirme les versions NeoForm et Parchment.
-
-Les mappings Parchment sont résolus directement depuis le miroir Maven
-NeoForge. Cela évite la redirection du dépôt Parchment vers JFrog,
-refusée par la politique réseau de cet environnement.
-
-Cloth Config 21.11 cible Minecraft 1.21.11 ; cette branche conserve donc
-la dernière version de la série 20. MixinExtras est embarqué avec le
-runtime propre à chaque modloader pour aligner l’API de compilation et
-la version réellement disponible en jeu.
-
-Les formats Minecraft 1.21.10 sont 69 pour les ressources et 88 pour les
-données. Le fichier `pack.mcmeta` décrit les ressources et déclare
-`min_format` et `max_format`, requis pour ce format.
-
-## Outillage
-
-| Outil | Version retenue |
+| Plugin de build | Version |
 | --- | --- |
-| Gradle | 8.14.6 |
-| Gradle du build Minestom | 9.1.0 |
 | Fabric Loom | 1.13.6 |
 | ModDevGradle | 2.0.148 |
 | ForgeGradle | 6.0.54 |
 | MixinGradle | 0.7.38 |
 | Foojay resolver | 1.0.0 |
 
-ForgeGradle 6 exige Gradle inférieur à 9. Loom 1.13.6 est la dernière
-version stable compatible avec Gradle 8 ; les versions suivantes exigent
-Gradle 9. Le wrapper et sa distribution sont vérifiés par SHA-256.
-Le remappage moderne de Loom n’utilise pas de refmap Mixin hérité.
+Parchment est résolu depuis le miroir Maven NeoForge. MixinExtras embarque
+le runtime propre à chaque modloader avec la même version que celle de
+compilation. Les formats des packs Minecraft sont **69** pour les ressources
+et **88** pour les données ; `pack.mcmeta` déclare aussi `min_format` et
+`max_format`.
 
-Minestom pour Minecraft 1.21.10 exige Java 25. Son wrapper Gradle 9.1.0
-et son build sont autonomes afin de conserver Gradle 8 pour Forge.
-Voir [la cible Minestom](minestom.md).
+Les tâches `checkModUpdates` et `updateModVersions` conservent la version
+Minecraft. Elles laissent Java, Gradle, les plugins et Minestom inchangés :
+voir [les mises à jour](mises-a-jour.md). Pour Minestom, choisir une version
+publiée pour le jeu ciblé, comme décrit dans [sa configuration](minestom.md).
 
-## Validation et publication
+## Modules et validation
 
-Le workflow `.github/workflows/build.yml` valide la structure lorsqu’il
-s’agit d’un template GitHub, même sans code applicatif. Dans un projet
-dérivé, il sélectionne les cibles présentes. Les mods utilisent Temurin 21
-et chaque tâche lance, dans GitHub Actions :
+`modules`, `required_modules` et `standalone_modules` pilotent Gradle et la
+CI. `common/` est obligatoire ; une cible absente est exclue. Un dossier
+de cible vide, ou contenant seulement `.gitkeep`, est initialisé depuis
+`gradle/templates/` sans modifier les dossiers déjà remplis.
 
-```sh
-./gradlew --no-daemon --max-workers=2 --stacktrace :common:check :<modloader>:build
-```
+Les quatre cibles passent un `PlatformContext` à `CommonClass.init`.
+Minestom partage seulement les trois classes neutres `Constants`,
+`CommonClass` et `PlatformContext` ; les API des moteurs restent dans leurs
+cibles respectives.
 
-Les tests JUnit contrôlent les liens entre métadonnées et classes, le
-contrat du contexte de plateforme et les ressources traitées par Gradle.
-Les rapports XML et HTML sont conservés même en cas d’échec. Le démarrage d’un client
-ou serveur Minecraft n’est pas couvert par ces tests.
+En mode template, la CI accepte l’absence de code applicatif et vérifie
+le modèle et ses outils. Le mode projet compile les cibles présentes et
+exécute leurs tests. Les tests de métadonnées des mods ne démarrent pas
+Minecraft ; le test Minestom démarre réellement un serveur. Les rapports
+sont conservés, y compris en cas d’échec. Voir [la validation](validation.md).
 
-Fabric, Forge, NeoForge et Minestom fournissent chacun un `PlatformContext` à
-`CommonClass.init`. Le code commun consulte ce contexte et son callback,
-tandis que les appels aux API du modloader restent dans la cible.
-Voir [l’exemple d’injection](developpement.md#contexte-du-code-partagé).
+La publication Maven est facultative : définir `local_maven_url` uniquement
+pour publier vers le dépôt choisi. Aucun secret de publication n’est requis
+pour les constructions ou les tests.
 
-La variable `local_maven_url` n’est lue que pour déclarer un dépôt de
-publication facultatif. Les tâches de compilation et de test n’exigent
-aucun secret de publication. Ne jamais enregistrer de credentials dans
-les fichiers de configuration.
+Retour à [l’accueil](README.fr.md) et aux [consignes](AGENTS.fr.md).

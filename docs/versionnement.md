@@ -1,18 +1,29 @@
+[English](versionnement.en.md) | **Français**
+
 # Versionnement
 
-La version du mod est centralisée dans la propriété `version` de
-`gradle.properties` et partagée par tous les modules. Les numéros de version
-Minecraft, modloader et bibliothèques sont indépendants de cette version.
+La propriété `version` de `gradle.properties` définit la version du produit pour
+tous les modules, indépendamment des versions de Minecraft et des dépendances.
 
-Appliquer Semantic Versioning 2.0.0 : PATCH pour un correctif compatible,
-MINOR pour une fonctionnalité compatible et MAJOR pour une rupture du
-contrat public. Évaluer les changements de la branche par rapport à la
-dernière version normale livrée ; ne pas incrémenter pour chaque commit.
+| Changement livré | Semantic Versioning 2.0.0 | Exemple |
+| --- | --- | --- |
+| Correctif compatible | PATCH | `1.4.2` → `1.4.3` |
+| Fonctionnalité compatible | MINOR, PATCH à zéro | `1.4.2` → `1.5.0` |
+| Rupture du contrat public | MAJOR, MINOR et PATCH à zéro | `1.4.2` → `2.0.0` |
 
-Les changements de documentation, de tests ou de CI ne déclenchent pas
-automatiquement une nouvelle version du produit. Une préversion peut être
-utilisée sur une branche de travail. Sur la branche principale, conserver
-une version normale `MAJOR.MINOR.PATCH`, sans préfixe ni suffixe, validée
-par la CI sur le commit exact avant la fusion.
+Évaluer la branche depuis la dernière version normale livrée, sans compter les
+commits. Documentation, tests et CI ne déclenchent pas automatiquement un changement
+de version. `0.y.z` reste instable ; aucun passage automatique à `1.0.0`.
 
-Ne pas réutiliser un numéro d’artefact déjà distribué pour un contenu différent.
+Une branche de travail peut utiliser une préversion. Sur `main`, conserver
+exactement `MAJOR.MINOR.PATCH` : trois entiers sans zéros initiaux, sauf `0`,
+sans préfixe, suffixe de préversion ou métadonnée de construction.
+
+Avant une fusion autorisée :
+
+1. Définir la version normale sur la branche de travail.
+2. Obtenir une CI réussie pour ce commit précis.
+3. Fusionner le commit testé sans changer ensuite sa version sur `main`.
+
+Ne jamais réutiliser le numéro d’un artefact distribué pour un contenu différent.
+Voir la [validation CI](validation.md).

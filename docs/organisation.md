@@ -1,44 +1,39 @@
+[English](organisation.en.md) | [Français](organisation.md)
+
 # Organisation du dépôt
 
-- `common/` : sources et ressources partagées par les mods ; les classes
-  neutres `Constants`, `CommonClass` et `PlatformContext` sont aussi compilées
-  par Minestom. Le contexte reçoit les informations et le callback de la cible.
-- `fabric/`, `forge/`, `neoforge/` : implémentations des modloaders.
-- `minestom/` : application serveur indépendante, avec `settings.gradle`,
-  son wrapper Gradle et ses sources ; son build est centralisé avec les autres.
-- Dans chaque module : `src/main/java/` pour le code,
-  `src/main/resources/` pour les ressources et `src/test/java/` pour les tests.
-- `buildSrc/src/main/groovy/` : conventions Gradle partagées.
-- `buildSrc/src/test/groovy/` : tests de l’outillage Gradle et des mises à jour.
-- `gradle/wrapper/` : wrapper et version de Gradle.
-- `gradle/modules/` : scripts de build de chaque cible.
-- `gradle/templates/` : sources, ressources, tests et fichiers de démarrage
-  utilisés uniquement pour initialiser les dossiers vides.
-- `gradle/bootstrap/` : point d’entrée pour initialiser sans configurer les applications.
-- `gradle/build-plan.gradle` : bilan du périmètre avant les tâches du build.
-- `.github/workflows/` : compilation et tests dans GitHub Actions.
-- `scripts/ci/` : sélection du parcours de CI et contrôles du template ;
-  `scripts/ci/tests/` contient leurs tests unitaires et `scripts/ci/integration/`
-  les fixtures Gradle isolées d’initialisation, de configuration et de contrat
-  du contexte commun généré. Ces dernières ne construisent pas les applications.
-- `scripts/ci/validate_published_versions.py` : contrôle en lecture seule
-  de l’existence des versions dans les métadonnées des dépôts officiels.
-- `docs/` : documentation complémentaire.
+Commencer par le [README](README.fr.md) et les [consignes](AGENTS.fr.md).
+Ce tableau indique où modifier chaque partie du projet.
 
-`gradle.properties` centralise les modules, les versions, les JDK et les
-paramètres de développement. `settings.gradle` sélectionne les dossiers
-présents et associe leur véritable script de build dans `gradle/modules/`.
-Les chemins `src/` et `build/` restent relatifs au dossier de chaque module.
-`common/` reste obligatoire. Les plugins des cibles
-absentes ne sont pas chargés inutilement.
-Le build Minestom lit ces mêmes propriétés, mais reste séparé du build racine.
-Son sourceSet sélectionne uniquement les trois classes neutres partagées
-dans `common/src/main/java/`, sous le package indiqué par `group`.
-Il compile celles-ci avec Java 25,
-sans configurer le projet `common/`, NeoForm ou les ressources de mixins.
-Le reste de `common/` conserve son accès à l’API Minecraft vanilla.
-Le dossier `common/` reste obligatoire, y compris avec Minestom seul.
+| Chemin | Quand le modifier |
+| --- | --- |
+| `common/` | Partager du code entre les mods ; ce module est obligatoire et peut utiliser Minecraft vanilla |
+| `fabric/`, `forge/`, `neoforge/` | Ajouter une intégration propre à un modloader |
+| `minestom/` | Développer le serveur autonome et son démarrage |
+| `<module>/src/main/java/` | Écrire le code de la cible |
+| `<module>/src/main/resources/` | Modifier ses ressources et métadonnées |
+| `<module>/src/test/java/`, `<module>/src/test/resources/` | Ajouter ses tests et leurs données |
+| `gradle.properties` | Changer les modules, l’identité, les versions, les JDK ou les paramètres |
+| `settings.gradle`, `gradle/modules/` | Modifier la sélection des modules et les builds centraux |
+| `buildSrc/src/main/groovy/`, `buildSrc/src/test/groovy/` | Adapter et tester les conventions Gradle ou l’outil de mise à jour |
+| `gradle/templates/` | Modifier les exemples générés dans les dossiers vides |
+| `gradle/bootstrap/` | Adapter l’initialisation sans construire les applications |
+| `gradle/build-plan.gradle` | Modifier le bilan des compilations prévues |
+| `gradle/wrapper/`, `minestom/gradle/wrapper/` | Synchroniser les wrappers et leurs scripts de lancement |
+| `.github/workflows/`, `scripts/ci/` | Adapter la CI et ses contrôleurs ; tests dans `tests/` et fixtures dans `integration/` sous `scripts/ci/` |
+| `docs/` | Maintenir les guides et leurs traductions |
 
-Les répertoires `build/`, `.gradle/`, `run/` et `runs/` sont générés et ignorés
-par Git. Les ressources issues de la génération de données Forge/NeoForge
-utilisent les chemins `src/generated/resources/` déclarés par leurs modules.
+Les builds centraux conservent les chemins `src/` et `build/` relatifs au
+module. Minestom utilise son propre build et une sélection limitée de
+sources neutres de `common/` ; voir [le guide de développement](developpement.md).
+
+Un dossier cible absent reste exclu. Un dossier déclaré vide, ou avec
+`.gitkeep` seul, est initialisé depuis son preset. Les dossiers non vides
+sont conservés ; `common/` doit toujours exister.
+
+Les sorties `build/`, les caches `.gradle/` et les dossiers d’exécution
+`run/` et `runs/` sont ignorés. Les ressources issues de la génération de
+données utilisent `generated_resources_directory`, par défaut `src/generated/resources/`.
+
+Voir [la validation](validation.md) pour les contrôles du template et les
+constructions des projets dérivés.

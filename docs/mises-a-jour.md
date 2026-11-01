@@ -1,125 +1,102 @@
-# Mise à jour des versions de modloaders et dépendances
+[English](mises-a-jour.en.md) | **Français**
 
-La version `minecraft_version` reste inchangée. Le mécanisme recherche les
-dernières versions stables compatibles pour ces propriétés :
+# Mise à jour des dépendances des mods
 
-- `fabric_loader_version`, `fabric_version` ;
-- `forge_version`, `neoforge_version`, `neo_form_version` ;
-- `parchment_minecraft`, `parchment_version` ;
-- `cloth_config_version`, `modmenu_version`.
+Ces tâches conservent `minecraft_version` et recherchent les dernières versions
+stables compatibles pour :
 
-Il ne modifie ni la version du mod, ni Java, ni Gradle et ses plugins,
-ni les autres paramètres du projet. Ces outils demandent une validation
-de compatibilité entre les trois modloaders avant toute mise à niveau.
-Le build autonome Minestom conserve ses propres propriétés
-`minestom_version` et `minestom_java_version` ; ces tâches ne les modifient pas.
+| Composants | Propriétés modifiées |
+| --- | --- |
+| Fabric | `fabric_loader_version`, `fabric_version` |
+| Forge et NeoForge | `forge_version`, `neoforge_version`, `neo_form_version` |
+| Mappings | `parchment_minecraft`, `parchment_version` |
+| Configuration et interface | `cloth_config_version`, `modmenu_version` |
 
-## Déclenchement manuel
+Elles ne modifient ni la version du produit, ni Java, Gradle, ses plugins ou
+Minestom. Le build autonome Minestom n’exécute pas cet outil.
 
-Dans IntelliJ, recharger le projet Gradle, puis ouvrir **Gradle → Tasks →
-mod development** :
+## Consulter puis appliquer
 
-- `checkModUpdates` affiche les versions disponibles sans écrire de fichier ;
-- `updateModVersions` applique les changements à `gradle.properties`.
-
-Ces tâches peuvent également être appelées avec le wrapper :
+Depuis la racine du dépôt :
 
 ```sh
 ./gradlew checkModUpdates
 ./gradlew updateModVersions
 ```
 
-Après une mise à jour manuelle, recharger le projet Gradle dans IntelliJ.
-Ne pas cumuler une tâche manuelle de mise à jour et une construction dans
-la même invocation : la configuration des modules a déjà eu lieu à ce stade.
-Utiliser le switch automatique pour construire directement avec les nouvelles versions.
+`checkModUpdates` affiche les changements sans écrire. `updateModVersions`
+les applique à `gradle.properties`. Dans IntelliJ, les deux tâches sont sous
+**Gradle → Tasks → mod development** ; recharger le projet Gradle après une mise
+à jour manuelle.
 
-## Mise à jour automatique à chaque construction
+Exécuter ces tâches séparément d’une construction : les modules sont déjà
+configurés quand une tâche manuelle s’exécute. Pour construire avec les nouvelles
+versions dans la même invocation CI, utiliser le mode automatique.
 
-Le booléen **autoUpdateModVersions** est désactivé par défaut. Pour l’activer,
-choisir l’une de ces méthodes :
+## Activer le mode automatique
 
-1. Ajouter `-PautoUpdateModVersions=true` aux arguments de la configuration
-   d’exécution Gradle d’IntelliJ ou à l’invocation du wrapper.
-2. Définir `ORG_GRADLE_PROJECT_autoUpdateModVersions=true` dans les variables
-   d’environnement de cette configuration Gradle.
-3. Décommenter `autoUpdateModVersions=true` dans `gradle.properties` pour
-   activer le mode sur ce checkout. Le commentaire seul ne masque pas la
-   variable d’environnement ; une propriété explicitement définie dans le
-   fichier est prioritaire sur cette variable.
+`autoUpdateModVersions` est désactivé par défaut.
 
-Le mécanisme exige `true` ou `false`. Pour ignorer temporairement un mode
-activé dans le fichier, passer `-PautoUpdateModVersions=false`.
+Dans **Actions → Validate template or build project → Run workflow**, choisir
+`repository_type=project` et activer `update_mod_versions`. La CI transmet
+`-PautoUpdateModVersions=true` et désactive le cache de configuration. Elle
+conserve le `gradle.properties` utilisé dans les rapports ; elle ne committe
+ni ne pousse les changements.
 
-La résolution et l’écriture se produisent lors de la configuration du
-projet racine, **avant celle des modules**. Les valeurs chargées en mémoire
-par Gradle sont aussi actualisées : la construction et les tests de la
-même invocation utilisent donc les versions nouvellement sélectionnées.
-Le mode s’applique aux tâches de construction, aux tests et aux tâches
-personnalisées. Les commandes d’aide, l’inspection des dépendances, `clean`
-seul et les tâches manuelles de mise à jour ne le déclenchent pas. Une
-synchronisation IntelliJ sans tâche de construction ne le déclenche pas.
+Le switch Gradle accepte uniquement `true` ou `false`. Il peut être défini avec :
 
-Ce mode doit reconsulter les sources à chaque invocation. Il refuse donc
-le cache de configuration et le mode hors ligne. Désactiver le cache de
-configuration dans la configuration Gradle d’IntelliJ, ou utiliser
-`--no-configuration-cache`.
+- `-PautoUpdateModVersions=true` dans les arguments Gradle ;
+- `ORG_GRADLE_PROJECT_autoUpdateModVersions=true` dans l’environnement ;
+- `autoUpdateModVersions=true` dans `gradle.properties`.
 
-Les compilations et tests de ce dépôt restent réservés à GitHub Actions,
-conformément à `AGENTS.md`. Dans le déclenchement manuel du workflow
-**Validate template or build project**, activer le booléen **update_mod_versions** pour
-transmettre ce switch aux constructions des mods en mode **project**.
-Le parcours template ne lance aucune construction applicative et ignore ce
-switch. La cible Minestom ne lance pas l’outil de mise à jour des modloaders.
-Chaque rapport
-conserve aussi le `gradle.properties` utilisé. Le workflow ne committe et
-ne pousse aucune mise à jour.
+Une valeur explicite du fichier prime sur la variable d’environnement ;
+`-PautoUpdateModVersions=false` permet de désactiver temporairement le mode.
+Une ligne commentée ne masque pas la variable d’environnement.
 
-## Sélection et protection des fichiers
+Le mode automatique consulte les dépôts et actualise les propriétés en mémoire
+**avant la configuration des modules**. Il s’applique aux constructions, tests
+et tâches personnalisées. L’aide, l’inspection des dépendances, `clean` seul,
+les tâches manuelles de mise à jour et une synchronisation IntelliJ sans tâche
+ne le déclenchent pas.
 
-Les versions Fabric API, Forge, NeoForge et NeoForm sont filtrées pour la
-version exacte de Minecraft. Fabric Loader est sélectionné parmi les
-versions stables publiées. Pour Cloth Config et Mod Menu, les déclarations
-Modrinth doivent explicitement inclure le jeu ciblé et Fabric ; la version
-doit également exister dans le dépôt Maven du projet. Cela évite de choisir
-un numéro plus récent destiné à une autre version de Minecraft.
+Il exige le réseau et `--no-configuration-cache` : le cache ne doit pas empêcher
+une nouvelle consultation à chaque invocation. Le mode hors ligne est refusé.
+L’option CI est sans effet en mode `template` et pour Minestom. Les compilations
+et tests restent réservés à GitHub Actions selon les [consignes](AGENTS.fr.md).
 
-Parchment utilise les mappings de la version exacte du jeu lorsqu’ils
-existent. S’ils sont absents, seul le précédent `parchment_minecraft`
-configuré peut être conservé, avec ses dernières mappings stables. Une
-erreur réseau ne vaut pas absence de mappings. Les versions alpha, beta,
-RC et SNAPSHOT sont exclues.
+## Sélection et protection du fichier
 
-Une version locale stable supérieure à la dernière version compatible
-publiée provoque un arrêt explicite, plutôt qu’une rétrogradation ou la
-conservation silencieuse d’une version incompatible. Vérifier alors la
-version actuelle et les métadonnées des dépôts.
+Fabric API, Forge, NeoForge et NeoForm sont filtrés pour la version exacte du jeu.
+Fabric Loader est choisi parmi les versions stables publiées. Cloth Config et
+Mod Menu doivent déclarer la compatibilité avec Minecraft et Fabric sur Modrinth,
+et leur version doit aussi exister sur le dépôt Maven du projet.
 
-Toutes les résolutions doivent réussir avant l’écriture. Les commentaires,
-l’ordre, les espaces et les paramètres sans rapport sont conservés.
-Le remplacement du fichier est atomique ; une modification concurrente
-détectée provoque un arrêt sans écraser les changements de l’utilisateur.
+Parchment privilégie la version exacte de Minecraft. Si les mappings n’existent
+pas, seul le précédent `parchment_minecraft` configuré peut être conservé, avec
+ses derniers mappings stables. Une erreur réseau ne vaut pas absence. Les versions
+alpha, bêta, RC et SNAPSHOT sont exclues.
+
+Une version locale stable supérieure à la dernière version compatible publiée
+provoque un arrêt explicite. Vérifier alors la configuration et les métadonnées ;
+l’outil ne rétrograde pas et ne conserve pas silencieusement une version non vérifiée.
+
+Toutes les recherches doivent réussir avant l’écriture. Les commentaires,
+l’ordre, les espaces et les autres paramètres sont conservés. Le remplacement
+est atomique ; une modification concurrente détectée arrête l’opération sans
+écraser le travail existant.
 
 ## Réseau et validation
 
-Les requêtes HTTPS conservent la vérification TLS et les paramètres proxy
-de Java/Gradle. Aucun token n’est nécessaire. Les hôtes requis sont :
+Les requêtes HTTPS gardent la vérification TLS et les paramètres proxy Java/Gradle.
+Aucun token n’est nécessaire. Autoriser ces hôtes dans l’environnement d’exécution :
+`maven.fabricmc.net`, `maven.minecraftforge.net`, `maven.neoforged.net`,
+`maven.shedaniel.me`, `maven.terraformersmc.com` et `api.modrinth.com`.
 
-- `maven.fabricmc.net` ;
-- `maven.minecraftforge.net` ;
-- `maven.neoforged.net` ;
-- `maven.shedaniel.me` ;
-- `maven.terraformersmc.com` ;
-- `api.modrinth.com`.
+Une erreur HTTP ou des métadonnées invalides interrompent l’opération sans modifier
+`gradle.properties`. La CI teste le résolveur, le switch et l’écriture avec des
+fixtures sans réseau, puis conserve leurs rapports. Toute nouvelle version doit
+encore passer les builds et tests des cibles concernées : l’existence d’une
+publication ne garantit pas la compatibilité de son API.
 
-Dans l’environnement cloud, autoriser également `api.modrinth.com` dans les
-paramètres réseau avant d’utiliser ces tâches : son accès est actuellement
-refusé. Une erreur HTTP ou des métadonnées invalides interrompent l’opération
-sans modification de `gradle.properties`.
-
-Les tests du résolveur, du switch et de l’écriture utilisent des fixtures
-sans accès réseau. Ils sont exécutés explicitement par la CI avec
-`./gradlew -p buildSrc test` et leurs rapports sont conservés. Ils ne
-garantissent pas qu’une mise à jour de bibliothèque restera compatible au
-niveau de toutes ses API : toute nouvelle version doit ensuite passer les
-compilations et tests des modloaders dans GitHub Actions.
+Voir la [validation CI](validation.md), le [versionnement](versionnement.md)
+et le [README](README.fr.md).

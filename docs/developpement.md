@@ -1,58 +1,56 @@
-# Configuration centrale et initialisation des cibles
+[English](developpement.en.md) | [Français](developpement.md)
 
-`gradle.properties` est la source des paramètres de Gradle et de la CI.
-Les versions Java sont explicites ; aucun choix de JDK par analyse des
-métadonnées ou du bytecode n’est effectué.
+# Développer à partir du template
 
-## Paramètres
+Modifier `gradle.properties` pour configurer Gradle et la CI. Voir
+[l’organisation](organisation.md) pour trouver le code et les ressources.
+
+## Paramètres centraux
 
 | Propriétés | Rôle |
 | --- | --- |
-| `modules`, `required_modules`, `standalone_modules` | Cibles disponibles, obligatoires et autonomes |
-| `java_version`, `<module>_java_version` | Toolchain par défaut et exceptions par module |
-| `gradle_java_version`, `minestom_gradle_java_version` | JVM qui exécute chaque build Gradle |
-| `buildsrc_java_version` | Toolchain de l’outillage, compatible avec la JVM Gradle |
-| `gradle_version`, `minestom_gradle_version` et leurs `*_distribution_sha256` | Distributions des wrappers et empreintes |
-| `*_version` des plugins et bibliothèques | Versions des dépendances de construction et de test |
-| `run_*_directory`, `generated_resources_directory` | Chemins de développement relatifs aux modules |
-| `test_max_heap_size`, `java_encoding` | Mémoire des tests et encodage des sources |
-| `minestom_development` | Mode de développement transmis au contexte par la tâche Minestom `run` |
-| `project_name`, `group`, `mod_id`, `mod_name`, `minestom_main_class` | Identité et fichiers initiaux du projet |
+| `modules`, `required_modules`, `standalone_modules` | Modules déclarés, obligatoires et autonomes |
+| `project_name`, `version`, `group`, `mod_*`, `minestom_main_class` | Identité du projet et des sources initiales |
+| `java_version`, `<module>_java_version`, `buildsrc_java_version` | JDK de compilation des modules et de l’outillage |
+| `gradle_java_version`, `minestom_gradle_java_version` | JDK qui lance chaque build Gradle |
+| `gradle_version`, `minestom_gradle_version`, `*_distribution_sha256` | Versions et empreintes des wrappers |
+| Versions des plugins et bibliothèques | Dépendances des scripts centraux |
+| `run_*_directory`, `generated_resources_directory`, `java_encoding`, `test_max_heap_size` | Chemins, encodage et mémoire des tests |
+| `minestom_development` | Mode de développement du contexte Minestom, désactivé par défaut |
 
-Par exemple, `forge_java_version` peut différer du défaut `java_version`.
-Cela ne change pas automatiquement la JVM qui exécute Gradle. La CI installe
-les JDK déclarés et vérifie leurs compatibilités avant une construction.
-Les contraintes des plugins, notamment ForgeGradle, restent applicables.
+Choisir l’identité avant de générer les sources : modifier ensuite `group`
+ou `mod_id` ne renomme pas le code existant. Consulter les
+[versions de référence](configuration.md) et les [règles de versionnement](versionnement.md).
 
-Les références GitHub Actions restent épinglées dans le workflow : GitHub
-ne permet pas de calculer dynamiquement ces références depuis les propriétés.
-Les valeurs des fixtures de tests décrivent des cas de test et ne sont pas
-des paramètres de production.
+## Ajouter ou retirer une cible
 
-## Scripts de build
+`common/` est obligatoire. Supprimer un dossier `fabric/`, `forge/`,
+`neoforge/` ou `minestom/` l’exclut de Gradle et de la CI, sans modifier la
+liste centrale ni recréer le dossier absent.
 
-Les fichiers principaux des cinq cibles se trouvent dans `gradle/modules/`.
-`settings.gradle` les associe aux dossiers correspondants ; `file('src/...')`
-et les sorties `build/` restent relatifs à ces dossiers. Un `forge/build.gradle`
-n’est donc plus nécessaire. Les conventions communes restent dans `buildSrc/`.
-Un module personnalisé peut fournir son propre `build.gradle` lorsqu’il
-n’existe pas de configuration centrale correspondante.
+Pour réintroduire une cible déclarée, créer son dossier vide, ou avec
+`.gitkeep` seul, puis lancer depuis la racine :
 
-Minestom reste un build autonome : son petit `settings.gradle` sélectionne
-`gradle/modules/minestom.gradle` et son wrapper fournit sa distribution Gradle.
+```sh
+mkdir forge
+./gradlew -p gradle/bootstrap help
+```
+
+Le bootstrap copie les exemples de `gradle/templates/` avec l’identité
+configurée, sans construire les applications ni modifier les dossiers non
+vides. Une configuration Gradle habituelle initialise aussi les cibles.
+Pour Minestom vide, utiliser d’abord ce bootstrap pour créer son wrapper.
 
 ## Contexte du code partagé
 
-Les modules Fabric, Forge et NeoForge importent directement les classes de
-`common/`, qui conserve l’accès aux API Minecraft vanilla. Minestom compile
-seulement `Constants`, `CommonClass` et `PlatformContext` depuis ces mêmes
-sources, sans charger le build `common/`. Ces trois classes restent neutres.
-Les quatre points d’entrée appellent `CommonClass.init` avec un
-`PlatformContext`. Ce record contient le nom de plateforme, l’indicateur de développement et un
-`Predicate<String>` chargé de consulter les mods présents.
+Les quatre cibles appellent `CommonClass.init(context)` avec un
+`PlatformContext` : nom, mode de développement et prédicat de recherche des mods.
+Fabric, Forge et NeoForge utilisent `common/`, qui garde l’accès à Minecraft vanilla.
+Minestom compile uniquement `Constants`, `CommonClass` et `PlatformContext`
+depuis le package `group`. Ces trois classes restent neutres ; le build
+`common/`, NeoForm et les ressources de mixins ne sont pas inclus dans Minestom.
 
-Par exemple, dans le point d’entrée Fabric, avec `FabricLoader` importé
-depuis `net.fabricmc.loader.api` :
+Exemple dans le point d’entrée Fabric, avec `net.fabricmc.loader.api.FabricLoader` importé :
 
 ```java
 var loader = FabricLoader.getInstance();
@@ -61,66 +59,37 @@ var context = new PlatformContext("Fabric", loader.isDevelopmentEnvironment(),
 CommonClass.init(context);
 ```
 
-Dans le code commun, la consultation passe par
-`context.isModLoaded().test(modId)`. Forge et NeoForge fournissent leur propre
-callback au même point d’entrée partagé, une fois leur API disponible.
-Les appels aux API du modloader restent dans le module de la cible.
-Minestom fournit aussi ce contexte depuis son initialisation autonome,
-avec un prédicat qui retourne `false` pour la recherche de mods.
-Son mode de développement est explicite ; voir
-[les options de démarrage Minestom](minestom.md#exemple-fourni).
+Le code partagé utilise `context.isModLoaded().test(modId)`. Les appels aux
+API des modloaders restent dans leurs modules ; le prédicat Minestom retourne
+`false`. Pour partager d’autres classes neutres, adapter la sélection dans
+`gradle/modules/minestom.gradle`.
 
-Le test de contrat du contexte emploie un prédicat de test, vérifie
-l’identifiant demandé et les valeurs requises par le record. La CI compile
-également cet exemple généré dans une fixture isolée ; les constructions
-complètes des cibles restent couvertes par le parcours projet.
+## JDK et wrappers
 
-## Dossiers absents ou vides
+Le JDK qui lance Gradle peut différer de celui qui compile les sources.
+Par défaut : Java 21 et wrapper racine Gradle 8 pour les mods ; Java 25 et
+wrapper Gradle 9 pour Minestom. La CI installe les JDK déclarés. Dans l’IDE,
+importer le build racine pour les mods et le build `minestom/` séparément.
 
-Un dossier absent reste exclu. `common/` est obligatoire et ne peut pas
-être supprimé. Pour initialiser une cible, créer son dossier vide, ou avec
-un fichier `.gitkeep` seul, puis lancer une configuration Gradle.
-
-```sh
-mkdir forge
-./gradlew -p gradle/bootstrap help
-```
-
-Le bootstrap affiche les fichiers à créer puis remplit le dossier depuis
-`gradle/templates/`. Il ne configure pas les applications. Une commande
-Gradle habituelle effectue aussi cette initialisation avant la sélection
-des modules. Pour Minestom vide, utiliser d’abord le wrapper racine avec
-le bootstrap afin de créer son propre wrapper.
-
-Les presets fournissent les sources, ressources et tests d’exemple, avec
-le package et l’identité configurés. Ils ne remplacent jamais un dossier
-non vide. Les valeurs d’identité doivent donc être choisies avant
-l’initialisation ; les changements ultérieurs du code existant restent
-du ressort du développeur.
-
-## Mise à jour des wrappers
-
-Les wrappers doivent conserver leurs fichiers de démarrage physiques,
-car ils interviennent avant la lecture de `gradle.properties`. Après une
-modification des versions ou des empreintes centrales, les tâches Gradle
-suivantes synchronisent leur configuration :
+Conserver les scripts et JAR des wrappers. Après modification des versions
+ou empreintes centrales, synchroniser les fichiers :
 
 ```sh
 ./gradlew wrapper
 ./minestom/gradlew -p minestom syncWrapperPreset
 ```
 
-La seconde tâche met aussi à jour les launchers et le JAR du preset Minestom.
-Son fichier de propriétés reste paramétré par les valeurs centrales.
-La CI refuse une divergence entre wrappers et configuration centrale.
+La seconde tâche synchronise aussi le preset Minestom. La CI refuse les
+écarts avec les propriétés. Les références GitHub Actions restent épinglées dans le workflow.
+Pour activer le mode de développement, utiliser `-Pminestom_development=true`
+avec `run`, ou `JAVA_OPTS='-Dtemplate.development=true'` pour une distribution ;
+voir [les exemples Minestom](minestom.md).
 
-Avant l’approbation du template, la CI confirme également la publication
-des versions épinglées des dépendances actives, par leurs métadonnées seules.
-Aucun binaire n’est téléchargé. Le rapport **published-versions** expose
-les sources et les résultats.
-Ajouter une nouvelle dépendance de version nécessite aussi d’ajouter sa
-règle de recherche dans `scripts/ci/validate_published_versions.py`.
+## Vérification
 
-Les compilations et tests automatisés restent exécutés exclusivement
-dans GitHub Actions. Le bilan préalable distingue modules avec compilation
-planifiée, cibles absentes et modules présents non sélectionnés.
+Les compilations et tests automatisés s’exécutent dans GitHub Actions ;
+[le guide de validation](validation.md) en précise la portée. La CI indique
+les modules sélectionnés et confirme les versions par leurs métadonnées.
+Le [guide des mises à jour](mises-a-jour.md) décrit les tâches de recherche
+et d’application des nouvelles versions. Voir aussi les
+[consignes de contribution](AGENTS.fr.md) et le [README](README.fr.md).

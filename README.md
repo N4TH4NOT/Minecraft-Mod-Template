@@ -1,112 +1,66 @@
 # Minecraft Mod Template — 1.21.10
 
-Template pour les futurs projets Minecraft **1.21.10** : mods Fabric,
-Forge et NeoForge sous Java 21, ou serveur Minestom sous Java 25.
-`common/` partage le code des mods ; `minestom/` est une application
-autonome, avec son propre build Gradle.
+[English](README.md) · [Français](docs/README.fr.md)
 
-Les quatre cibles appellent `CommonClass.init` avec un `PlatformContext` :
-nom de plateforme, mode de développement et fonction de recherche des mods.
-Minestom compile uniquement les trois classes neutres de cette API commune.
-Voir [l’exemple de contexte](docs/developpement.md#contexte-du-code-partagé).
+Multi-target template for Minecraft **1.21.10**. Configure versions, modules and
+JDKs in `gradle.properties`; target build scripts live in `gradle/modules/`.
 
-## Configuration
+| Target | JDK | Wrapper |
+| --- | --- | --- |
+| Fabric, Forge, NeoForge | 21 | Root: Gradle 8.14.6 |
+| Minestom standalone server | 25 | `minestom/`: Gradle 9.1.0 |
 
-Les versions du jeu, des modloaders et des dépendances du mod sont définies
-dans `gradle.properties`. Le wrapper racine fournit Gradle 8.14.6 pour les
-mods ; celui de `minestom/` fournit Gradle 9.1.0 pour Java 25. Une installation
-globale de Gradle n’est pas nécessaire. Utiliser le JDK complet de la cible.
+## Set up a project
 
-Consulter [la configuration et les versions compatibles](docs/configuration.md),
-[l’organisation](docs/organisation.md) et [les règles de versionnement](docs/versionnement.md).
-Les consignes de contribution sont dans [AGENTS.md](AGENTS.md).
-
-`common/` est obligatoire. Pour retirer une cible, supprimer simplement
-son dossier `fabric/`, `forge/`, `neoforge/` ou `minestom/` : Gradle et la
-CI l’excluent automatiquement. Les modules, versions, JDK et paramètres de
-développement sont centralisés dans `gradle.properties` ; les scripts de
-build des cibles sont dans `gradle/modules/`.
-
-Pour réintroduire une cible, créer son dossier vide (ou avec `.gitkeep`).
-La prochaine configuration Gradle génère ses sources, ressources et tests
-d’exemple depuis `gradle/templates/`. Les fichiers existants sont conservés.
-Minestom reçoit également son wrapper et son point d’entrée autonome.
-L’initialisation seule est disponible avec :
+1. Create a repository with **Use this template**.
+2. Set project identity and dependency versions in `gradle.properties`.
+3. Keep `common/` and at least one target. Delete optional target directories
+   to exclude them from Gradle and CI.
+4. To restore a target, create its empty directory, then initialize it:
 
 ```sh
+mkdir forge
 ./gradlew -p gradle/bootstrap help
 ```
 
-Cette commande ne configure ni ne compile les applications. Consulter
-[la configuration centralisée et l’initialisation](docs/developpement.md).
+Existing files are preserved. Empty directories, including those containing
+only `.gitkeep`, receive starter sources, resources and tests. Minestom also
+receives its own wrapper. The bootstrap does not compile applications.
 
-Avant les tâches, Gradle affiche les modules avec compilation planifiée,
-les dossiers absents exclus et les modules présents non sélectionnés.
-Ce bilan est aussi publié dans la synthèse de la CI.
+## Share code
 
-## Validation
+Fabric, Forge and NeoForge import `common/` directly. All four targets call
+`CommonClass.init(PlatformContext)` with a platform name, development flag and
+mod lookup callback. Minestom compiles the same three engine-independent
+classes: `Constants`, `CommonClass` and `PlatformContext`.
 
-Les compilations et les tests s’exécutent exclusivement dans GitHub Actions,
-via le workflow **Validate template or build project**. La CI adapte ses contrôles au
-statut GitHub du dépôt :
+See [development and shared code](docs/developpement.en.md) and
+[Minestom startup options](docs/minestom.en.md).
 
-- **Template** (`is_template=true`) : validation de la structure, des
-  configurations et de l’outillage de CI, avec des tests d’initialisation
-  sur des fixtures Gradle isolées. Une fixture compile aussi l’API de
-  contexte générée et teste son callback. L’absence de code métier est
-  acceptée ; les applications du dépôt ne sont pas construites dans ce mode.
-- **Projet dérivé** : compilation et tests des seules cibles présentes,
-  avec les versions de Java et de Gradle adaptées à chaque cible. Les
-  rapports et les artefacts sont conservés. Une suite absente ou entièrement
-  ignorée ne compte pas comme validation.
+## Validate changes
 
-Le déclenchement manuel permet de choisir `repository_type=template` ou
-`project` pour vérifier les deux parcours ; `auto` suit le statut GitHub.
-Consulter [les contrôles et leur portée](docs/validation.md).
+Builds and automated tests run in **GitHub Actions**.
 
-Avant l’approbation, la CI confirme aussi l’existence des versions épinglées
-dans les métadonnées des dépôts officiels : plugins, bibliothèques, Gradle
-et Minecraft. Ce contrôle ne télécharge aucun JAR ou ZIP et ne modifie pas
-`gradle.properties` et conserve un rapport avec les sources consultées.
-Une version introuvable ou une vérification réseau impossible empêche la validation.
+| Repository mode | Checks |
+| --- | --- |
+| Template (`is_template=true`) | Structure, configuration, published versions and isolated Gradle fixtures; application sources may be absent |
+| Derived project | Builds, executed tests and artifacts for present targets |
 
-En mode projet, les tests vérifient les métadonnées générées, les classes
-d’entrée, les mixins, le contexte fourni au code partagé et le format des
-ressources.
-Ils ne remplacent pas un essai de démarrage du jeu.
+The workflow **Validate template or build project** supports `repository_type`
+values `auto`, `template` and `project`. It reports compiled, absent and
+unselected modules before builds. Version checks use official publication
+metadata without downloading dependency binaries.
 
-Dans ce même mode, le test Minestom démarre et arrête un serveur local
-sur un port éphémère.
-Il ne nécessite aucune fonctionnalité métier du futur projet.
+See [CI checks and limits](docs/validation.en.md). Dependency update tasks
+`checkModUpdates` and `updateModVersions` keep Minecraft fixed;
+[update options](docs/mises-a-jour.en.md) describe manual and automatic use.
 
-La publication Maven est facultative : définir `local_maven_url` uniquement
-pour publier vers un dépôt choisi. Cette variable n’est pas requise pour
-compiler ou tester.
+## Reference
 
-## Cible Minestom
+- [Configuration and pinned versions](docs/configuration.en.md)
+- [Repository layout](docs/organisation.en.md)
+- [Versioning](docs/versionnement.en.md)
+- [Contribution instructions](AGENTS.md)
 
-Minestom est un serveur autonome et possède sa propre API. Le module ne
-charge pas les mods Fabric, Forge ou NeoForge et ne réutilise pas les classes
-`net.minecraft` de `common/`. Il partage `Constants`, `CommonClass` et
-`PlatformContext` par ses sources, avec un contexte de développement
-explicite. Voir [la configuration Minestom](docs/minestom.md).
-
-## Mise à jour des dépendances
-
-Les tâches Gradle `checkModUpdates` (aperçu) et `updateModVersions` (application)
-sont disponibles dans IntelliJ, fenêtre **Gradle → Tasks → mod development**.
-Elles actualisent les versions compatibles dans `gradle.properties` en
-conservant la version Minecraft du projet.
-
-Pour rechercher et appliquer les versions avant chaque construction et ses
-tests, activer `autoUpdateModVersions=true` dans l’environnement Gradle :
-`-PautoUpdateModVersions=true`, variable d’environnement
-`ORG_GRADLE_PROJECT_autoUpdateModVersions=true`, ou propriété dans
-`gradle.properties`. Le mode automatique est désactivé par défaut et
-nécessite le cache de configuration désactivé.
-
-Le workflow manuel propose également le booléen **update_mod_versions**.
-Consulter [les modes d’utilisation et les limites](docs/mises-a-jour.md).
-
-## Credits
-* [MultiLoader-Template](https://github.com/jaredlll08/MultiLoader-Template) by *jaredlll08*: for compatibility for main modloaders (Fabric, Forge and NeoForge)
+Based on [MultiLoader-Template](https://github.com/jaredlll08/MultiLoader-Template)
+by jaredlll08 for Fabric, Forge and NeoForge support.
