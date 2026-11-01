@@ -11,6 +11,7 @@ Conserver l’organisation Gradle multi-module existante :
 - `fabric/` : code et ressources propres à Fabric.
 - `forge/` : code et ressources propres à Forge.
 - `neoforge/` : code et ressources propres à NeoForge.
+- `minestom/` : serveur Minestom autonome, avec son propre build et wrapper.
 - `buildSrc/src/main/groovy/` : conventions de compilation Gradle partagées.
 - `gradle/wrapper/`, `gradlew` et `gradlew.bat` : wrapper Gradle.
 
@@ -22,6 +23,7 @@ Réserver un dossier aux tests automatisés de chaque modloader :
 - `fabric/src/test/java/` : tests propres à Fabric.
 - `forge/src/test/java/` : tests propres à Forge.
 - `neoforge/src/test/java/` : tests propres à NeoForge.
+- `minestom/src/test/java/` : tests du serveur Minestom.
 
 Placer les tests partagés dans `common/src/test/java/` si nécessaire, et les
 ressources de test dans `src/test/resources/` du module concerné. Conserver
@@ -32,6 +34,11 @@ pour regrouper ces contenus.
 Les fichiers `settings.gradle`, `build.gradle` et `gradle.properties` restent
 à la racine ; chaque module et `buildSrc/` conservent leur `build.gradle`.
 Respecter les emplacements de ressources générées déclarés dans ces fichiers.
+
+Minestom utilise Java 25 et son wrapper Gradle 9, séparément des mods sous
+Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
+`common/` dépend des classes Minecraft vanilla, absentes de Minestom.
+Les propriétés partagées restent centralisées dans `gradle.properties`.
 
 Si nécessaire, utiliser `docs/` pour la documentation, `scripts/` pour les
 scripts de maintenance et d’automatisation, et `work/` pour les brouillons,
@@ -105,6 +112,13 @@ GitHub Actions, jamais localement dans l’environnement de l’agent.
 Configurer les workflows pour les technologies et les cibles réellement
 utilisées. Conserver les rapports et les artefacts utiles.
 
+Adapter les contrôles à la nature du dépôt GitHub (`is_template`). Un
+template peut ne contenir aucun code applicatif : vérifier sa structure,
+ses configurations et son outillage sans exiger de compilation ni de
+tests applicatifs. Pour un projet dérivé, compiler les cibles présentes
+et vérifier leurs résultats de tests. Les tests des scripts de CI restent
+dans `scripts/ci/tests/` et s’exécutent eux aussi dans GitHub Actions.
+
 Vérifier les résultats du commit exact concerné.
 Distinguer les contrôles réussis, échoués, ignorés et non exécutés.
 
@@ -138,6 +152,10 @@ ou de commits.
 
 Centraliser la version pour éviter les divergences entre modules.
 Documenter les règles dans `docs/versionnement.md`.
+
+Choisir une version Minestom publiée pour la valeur exacte de
+`minecraft_version`. Ne pas utiliser la dernière version globale si elle
+cible un autre jeu, ni des sélecteurs dynamiques comme `latest.release`.
 
 Les préversions sont autorisées sur les branches de travail.
 

@@ -11,6 +11,8 @@ dernières versions stables compatibles pour ces propriétés :
 Il ne modifie ni la version du mod, ni Java, ni Gradle et ses plugins,
 ni les autres paramètres du projet. Ces outils demandent une validation
 de compatibilité entre les trois modloaders avant toute mise à niveau.
+Le build autonome Minestom conserve ses propres propriétés
+`minestom_version` et `minestom_java_version` ; ces tâches ne les modifient pas.
 
 ## Déclenchement manuel
 
@@ -65,8 +67,11 @@ configuration dans la configuration Gradle d’IntelliJ, ou utiliser
 
 Les compilations et tests de ce dépôt restent réservés à GitHub Actions,
 conformément à `AGENTS.md`. Dans le déclenchement manuel du workflow
-**Build Minecraft 1.21.10**, activer le booléen **update_mod_versions** pour
-transmettre ce switch à chaque construction de la matrice. Chaque rapport
+**Validate template or build project**, activer le booléen **update_mod_versions** pour
+transmettre ce switch aux constructions des mods en mode **project**.
+Le parcours template ne lance aucune construction applicative et ignore ce
+switch. La cible Minestom ne lance pas l’outil de mise à jour des modloaders.
+Chaque rapport
 conserve aussi le `gradle.properties` utilisé. Le workflow ne committe et
 ne pousse aucune mise à jour.
 

@@ -1,15 +1,16 @@
 # Minecraft Mod Template — 1.21.10
 
-Modèle Java 21 pour développer un mod Minecraft **1.21.10** avec Fabric,
-Forge et NeoForge. Le code partagé se trouve dans `common/` ; chaque
-modloader possède son module et ses tests automatisés.
+Template pour les futurs projets Minecraft **1.21.10** : mods Fabric,
+Forge et NeoForge sous Java 21, ou serveur Minestom sous Java 25.
+`common/` partage le code des mods ; `minestom/` est une application
+autonome, avec son propre build Gradle.
 
 ## Configuration
 
 Les versions du jeu, des modloaders et des dépendances du mod sont définies
-dans `gradle.properties`. Le wrapper fournit Gradle 8.14.6 ; une installation
-globale de Gradle n’est pas nécessaire. Utiliser un **JDK 21 complet**, avec
-`javac`, pour le développement.
+dans `gradle.properties`. Le wrapper racine fournit Gradle 8.14.6 pour les
+mods ; celui de `minestom/` fournit Gradle 9.1.0 pour Java 25. Une installation
+globale de Gradle n’est pas nécessaire. Utiliser le JDK complet de la cible.
 
 Consulter [la configuration et les versions compatibles](docs/configuration.md),
 [l’organisation](docs/organisation.md) et [les règles de versionnement](docs/versionnement.md).
@@ -18,18 +19,39 @@ Les consignes de contribution sont dans [AGENTS.md](AGENTS.md).
 ## Validation
 
 Les compilations et les tests s’exécutent exclusivement dans GitHub Actions,
-via le workflow **Build Minecraft 1.21.10**, à chaque push ou pull request,
-ou par déclenchement manuel. Sa matrice vérifie Fabric, Forge et NeoForge
-séparément, ainsi que les tests partagés. Les rapports et les JAR sont
-conservés comme artefacts du workflow.
+via le workflow **Validate template or build project**. La CI adapte ses contrôles au
+statut GitHub du dépôt :
 
-Les tests de configuration vérifient les métadonnées générées, les classes
+- **Template** (`is_template=true`) : validation de la structure, des
+  configurations et de l’outillage de CI. L’absence de code applicatif est
+  acceptée ; aucune compilation applicative n’est exigée.
+- **Projet dérivé** : compilation et tests des seules cibles présentes,
+  avec les versions de Java et de Gradle adaptées à chaque cible. Les
+  rapports et les artefacts sont conservés. Une suite absente ou entièrement
+  ignorée ne compte pas comme validation.
+
+Le déclenchement manuel permet de choisir `repository_type=template` ou
+`project` pour vérifier les deux parcours ; `auto` suit le statut GitHub.
+Consulter [les contrôles et leur portée](docs/validation.md).
+
+En mode projet, les tests vérifient les métadonnées générées, les classes
 d’entrée, les mixins, les services de plateforme et le format des ressources.
 Ils ne remplacent pas un essai de démarrage du jeu.
+
+Dans ce même mode, le test Minestom démarre et arrête un serveur local
+sur un port éphémère.
+Il ne nécessite aucune fonctionnalité métier du futur projet.
 
 La publication Maven est facultative : définir `local_maven_url` uniquement
 pour publier vers un dépôt choisi. Cette variable n’est pas requise pour
 compiler ou tester.
+
+## Cible Minestom
+
+Minestom est un serveur autonome et possède sa propre API. Le module ne
+charge pas les mods Fabric, Forge ou NeoForge et ne réutilise pas les classes
+`net.minecraft` de `common/`. Son exemple de démarrage et son test servent
+de base au futur serveur. Voir [la configuration Minestom](docs/minestom.md).
 
 ## Mise à jour des dépendances
 

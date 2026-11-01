@@ -1,6 +1,7 @@
 # Configuration Minecraft 1.21.10
 
-Cette branche cible uniquement Minecraft 1.21.10, avec Java 21.
+Cette branche cible uniquement Minecraft 1.21.10, avec Java 21 pour les
+modloaders et Java 25 pour le serveur Minestom autonome.
 Les descripteurs Fabric, Forge et NeoForge excluent les versions suivantes
 du jeu, dont la compatibilité n’est pas établie.
 
@@ -19,6 +20,7 @@ du jeu, dont la compatibilité n’est pas établie.
 | Mod Menu | 16.0.1 |
 | Mixin | 0.8.7 |
 | MixinExtras | 0.5.5 |
+| Minestom (serveur autonome) | 2025.12.19-1.21.10 |
 
 Versions contrôlées dans les métadonnées Maven officielles :
 [Fabric Loader](https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml),
@@ -48,6 +50,7 @@ données. Le fichier `pack.mcmeta` décrit les ressources et déclare
 | Outil | Version retenue |
 | --- | --- |
 | Gradle | 8.14.6 |
+| Gradle du build Minestom | 9.1.0 |
 | Fabric Loom | 1.13.6 |
 | ModDevGradle | 2.0.148 |
 | ForgeGradle | 6.0.54 |
@@ -59,10 +62,16 @@ version stable compatible avec Gradle 8 ; les versions suivantes exigent
 Gradle 9. Le wrapper et sa distribution sont vérifiés par SHA-256.
 Le remappage moderne de Loom n’utilise pas de refmap Mixin hérité.
 
+Minestom pour Minecraft 1.21.10 exige Java 25. Son wrapper Gradle 9.1.0
+et son build sont autonomes afin de conserver Gradle 8 pour Forge.
+Voir [la cible Minestom](minestom.md).
+
 ## Validation et publication
 
-Le workflow `.github/workflows/build.yml` utilise un JDK Temurin 21 et
-une matrice Fabric / Forge / NeoForge. Chaque tâche lance, dans GitHub Actions :
+Le workflow `.github/workflows/build.yml` valide la structure lorsqu’il
+s’agit d’un template GitHub, même sans code applicatif. Dans un projet
+dérivé, il sélectionne les cibles présentes. Les mods utilisent Temurin 21
+et chaque tâche lance, dans GitHub Actions :
 
 ```sh
 ./gradlew --no-daemon --max-workers=2 --stacktrace :common:check :<modloader>:build
