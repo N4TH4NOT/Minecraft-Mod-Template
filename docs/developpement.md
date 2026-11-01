@@ -16,6 +16,7 @@ métadonnées ou du bytecode n’est effectué.
 | `*_version` des plugins et bibliothèques | Versions des dépendances de construction et de test |
 | `run_*_directory`, `generated_resources_directory` | Chemins de développement relatifs aux modules |
 | `test_max_heap_size`, `java_encoding` | Mémoire des tests et encodage des sources |
+| `minestom_development` | Mode de développement transmis au contexte par la tâche Minestom `run` |
 | `project_name`, `group`, `mod_id`, `mod_name`, `minestom_main_class` | Identité et fichiers initiaux du projet |
 
 Par exemple, `forge_java_version` peut différer du défaut `java_version`.
@@ -43,9 +44,11 @@ Minestom reste un build autonome : son petit `settings.gradle` sélectionne
 ## Contexte du code partagé
 
 Les modules Fabric, Forge et NeoForge importent directement les classes de
-`common/`, qui conserve l’accès aux API Minecraft vanilla. Chaque point
-d’entrée appelle `CommonClass.init` avec un `PlatformContext`. Ce record
-contient le nom de plateforme, l’indicateur de développement et un
+`common/`, qui conserve l’accès aux API Minecraft vanilla. Minestom compile
+seulement `Constants`, `CommonClass` et `PlatformContext` depuis ces mêmes
+sources, sans charger le build `common/`. Ces trois classes restent neutres.
+Les quatre points d’entrée appellent `CommonClass.init` avec un
+`PlatformContext`. Ce record contient le nom de plateforme, l’indicateur de développement et un
 `Predicate<String>` chargé de consulter les mods présents.
 
 Par exemple, dans le point d’entrée Fabric, avec `FabricLoader` importé
@@ -62,12 +65,15 @@ Dans le code commun, la consultation passe par
 `context.isModLoaded().test(modId)`. Forge et NeoForge fournissent leur propre
 callback au même point d’entrée partagé, une fois leur API disponible.
 Les appels aux API du modloader restent dans le module de la cible.
-Minestom conserve son initialisation autonome et sa propre API.
+Minestom fournit aussi ce contexte depuis son initialisation autonome,
+avec un prédicat qui retourne `false` pour la recherche de mods.
+Son mode de développement est explicite ; voir
+[les options de démarrage Minestom](minestom.md#exemple-fourni).
 
 Le test de contrat du contexte emploie un prédicat de test, vérifie
 l’identifiant demandé et les valeurs requises par le record. La CI compile
 également cet exemple généré dans une fixture isolée ; les constructions
-complètes des mods restent couvertes par le parcours projet.
+complètes des cibles restent couvertes par le parcours projet.
 
 ## Dossiers absents ou vides
 

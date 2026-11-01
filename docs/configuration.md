@@ -82,7 +82,7 @@ contrat du contexte de plateforme et les ressources traitées par Gradle.
 Les rapports XML et HTML sont conservés même en cas d’échec. Le démarrage d’un client
 ou serveur Minecraft n’est pas couvert par ces tests.
 
-Fabric, Forge et NeoForge fournissent chacun un `PlatformContext` à
+Fabric, Forge, NeoForge et Minestom fournissent chacun un `PlatformContext` à
 `CommonClass.init`. Le code commun consulte ce contexte et son callback,
 tandis que les appels aux API du modloader restent dans la cible.
 Voir [l’exemple d’injection](developpement.md#contexte-du-code-partagé).

@@ -31,6 +31,11 @@ fourni par la cible. Cette fixture est isolée : elle ne résout ni ne lance
 Minecraft ou un modloader. Il s’agit d’un test de contrat de l’API générée ;
 les applications et les artefacts du projet nécessitent le parcours projet.
 
+Une fixture du build Minestom compile également les trois classes neutres
+partagées depuis `common/`. Elle n’inclut ni NeoForm, ni les ressources de
+mixins, ni la dépendance au moteur Minestom. Elle vérifie le partage Java
+de l’API ; le démarrage réel du serveur reste couvert par le parcours projet.
+
 ## Versions publiées
 
 Le job **Verify configured versions in official repositories** est requis
@@ -102,7 +107,8 @@ elle vérifie les presets sans modifier les dossiers de l’application.
 Les tests des mods vérifient les ressources traitées et les
 points d’entrée. Les tests de `common/` vérifient le contrat du contexte et
 l’appel au prédicat fourni par la cible. Ils ne lancent pas un client ou
-serveur Minecraft. Le test Minestom lance réellement le moteur en local.
+serveur Minecraft. Le test Minestom lance réellement le moteur en local
+et vérifie aussi le contexte de plateforme transmis au code partagé.
 
 Un projet sans code à compiler échoue avec une explication. Pour chaque
 suite applicative attendue, les rapports doivent exister et compter au

@@ -27,12 +27,22 @@ java {
     withJavadocJar()
 }
 
+// Share the engine-independent API without configuring common's Minecraft build
+// or packaging its resources and other Java sources.
+def sharedPlatform = objects.sourceDirectorySet('sharedPlatform', 'Shared platform API')
+sharedPlatform.srcDir(new File(templateRootDirectory, 'common/src/main/java'))
+def sharedPackage = templateProperty('group').replace('.', '/')
+sharedPlatform.include("${sharedPackage}/Constants.java", "${sharedPackage}/CommonClass.java",
+        "${sharedPackage}/PlatformContext.java")
+sourceSets.main.java.source(sharedPlatform)
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
     implementation "net.minestom:minestom:${minestomVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4j_version}"
     runtimeOnly "org.slf4j:slf4j-simple:${slf4j_version}"
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -42,6 +52,11 @@ dependencies {
 application {
     mainClass = templateProperty('minestom_main_class')
     applicationName = artifactName
+}
+
+tasks.named('run', JavaExec) {
+    systemProperty 'template.development', providers.systemProperty('template.development')
+            .orElse(templateProperty('minestom_development')).get()
 }
 
 tasks.withType(JavaCompile).configureEach {

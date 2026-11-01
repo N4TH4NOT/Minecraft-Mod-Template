@@ -1,5 +1,7 @@
 package me.n4th4not.modid.minestom;
 
+import me.n4th4not.modid.CommonClass;
+import me.n4th4not.modid.PlatformContext;
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerProcess;
@@ -18,10 +20,12 @@ import net.minestom.server.instance.block.Block;
 public final class MinestomServer implements AutoCloseable {
     private final ServerProcess process;
     private final InstanceContainer instance;
+    private final PlatformContext context;
 
-    private MinestomServer(ServerProcess process, InstanceContainer instance) {
+    private MinestomServer(ServerProcess process, InstanceContainer instance, PlatformContext context) {
         this.process = process;
         this.instance = instance;
+        this.context = context;
     }
 
     /**
@@ -32,6 +36,18 @@ public final class MinestomServer implements AutoCloseable {
      * @return the running server, which must be closed by its owner
      */
     public static MinestomServer start(String host, int port) {
+        return start(host, port, false);
+    }
+
+    /**
+     * Starts the template server with an explicit development environment flag.
+     *
+     * @param host bind address
+     * @param port listening port, or zero for an ephemeral port
+     * @param development whether shared code should use a development context
+     * @return the running server, which must be closed by its owner
+     */
+    public static MinestomServer start(String host, int port, boolean development) {
         if (host == null || host.isBlank()) {
             throw new IllegalArgumentException("The bind address must not be blank");
         }
@@ -39,9 +55,11 @@ public final class MinestomServer implements AutoCloseable {
             throw new IllegalArgumentException("The port must be between 0 and 65535");
         }
 
+        PlatformContext context = new PlatformContext("Minestom", development, ignored -> false);
         MinecraftServer server = MinecraftServer.init(new Auth.Offline());
         ServerProcess process = MinecraftServer.process();
         try {
+            CommonClass.init(context);
             InstanceContainer instance = process.instance().createInstanceContainer();
             instance.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
             process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {
@@ -49,7 +67,7 @@ public final class MinestomServer implements AutoCloseable {
                 event.getPlayer().setRespawnPoint(new Pos(0.5, 42, 0.5));
             });
             server.start(host, port);
-            return new MinestomServer(process, instance);
+            return new MinestomServer(process, instance, context);
         } catch (RuntimeException | Error failure) {
             process.stop();
             throw failure;
@@ -67,7 +85,7 @@ public final class MinestomServer implements AutoCloseable {
         }
         String host = args.length > 0 ? args[0] : "127.0.0.1";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 25565;
-        MinestomServer server = start(host, port);
+        MinestomServer server = start(host, port, Boolean.getBoolean("template.development"));
         Runtime.getRuntime().addShutdownHook(new Thread(server::close, "template-shutdown"));
     }
 
@@ -77,6 +95,16 @@ public final class MinestomServer implements AutoCloseable {
 
     public InstanceContainer instance() {
         return instance;
+    }
+
+    /**
+     * Returns the context passed to shared initialization for this server.
+     * Minestom does not load mods, so its mod lookup always returns false.
+     *
+     * @return the immutable runtime context of this server
+     */
+    public PlatformContext platformContext() {
+        return context;
     }
 
     public boolean isRunning() {

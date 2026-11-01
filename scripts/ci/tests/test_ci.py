@@ -240,6 +240,7 @@ class PlanningTest(ScaffoldFixture):
         plan = make_plan(self.root, "project")
         row = next(row for row in plan["matrix"]["include"] if row["target"] == "minestom")
         self.assertEqual("21\n25", row["java_versions"])
+        self.assertEqual("25\n21", plan["scaffold_java_versions"])
         self.assertTrue(row["initialize"])
         self.assertEqual("passed", validate(self.root)["result"])
         self.assertEqual([], list((self.root / "minestom").iterdir()))

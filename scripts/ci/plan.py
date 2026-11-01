@@ -135,6 +135,11 @@ def make_plan(root, kind):
     if not loaders and not minestom:
         raise ValueError("No configured application target: retain a modloader module or standalone Minestom.")
     matrix = []
+    scaffold_runtime, scaffold_versions = java_setup(config, ["common", "buildsrc"])
+    scaffold_toolchains = set(scaffold_versions.split())
+    if minestom:
+        scaffold_toolchains.update(java_setup(config, ["minestom"], standalone=True)[1].split())
+    scaffold_versions = "\n".join(sorted(scaffold_toolchains - {scaffold_runtime}, key=int) + [scaffold_runtime])
     if kind == "project":
         application_directories = [root / module for module in included]
         application_directories += [root / "gradle/templates" / module for module in initializing]
@@ -153,7 +158,7 @@ def make_plan(root, kind):
         "support_tests": kind == "project" and bool(loaders) and has_sources(root / "buildSrc", "test"),
         "gradle_java_version": language_version(config, "gradle_java_version"),
         "support_java_versions": java_setup(config, ["buildsrc"])[1],
-        "scaffold_java_versions": java_setup(config, ["common", "buildsrc"])[1],
+        "scaffold_java_versions": scaffold_versions,
         "declared_modules": declared, "included_modules": included,
         "excluded_modules": [module for module in declared if module not in included],
         "initialization_modules": initializing,

@@ -1,6 +1,7 @@
 package me.n4th4not.modid.minestom;
 
 import com.google.gson.JsonParser;
+import me.n4th4not.modid.Constants;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
@@ -23,10 +24,14 @@ class MinestomServerTest {
     @Test
     @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void emptyTemplateGeneratesAWorldServesMinecraftStatusAndStops() throws Exception {
-        MinestomServer server = MinestomServer.start("127.0.0.1", 0);
+        MinestomServer server = MinestomServer.start("127.0.0.1", 0, true);
         try (server) {
             assertTrue(server.isRunning(), "The real Minestom process must start");
             assertTrue(server.port() > 0, "The operating system must allocate a listening port");
+            assertEquals("Minestom", server.platformContext().name());
+            assertTrue(server.platformContext().development(), "The explicit development flag must reach shared code");
+            assertFalse(server.platformContext().isModLoaded().test(Constants.MOD_ID), "Minestom does not load this mod");
+            assertFalse(server.platformContext().isModLoaded().test("unknown_mod"), "Minestom does not load external mods");
 
             server.instance().loadChunk(0, 0).get(10, TimeUnit.SECONDS);
             assertEquals(Block.STONE, server.instance().getBlock(0, 39, 0));

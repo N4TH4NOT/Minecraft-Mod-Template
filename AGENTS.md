@@ -39,13 +39,19 @@ son build d’outillage. Respecter les emplacements de ressources générées.
 Minestom utilise Java 25 et son wrapper Gradle 9, séparément des mods sous
 Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
 `common/` dépend des classes Minecraft vanilla, absentes de Minestom.
+Son sourceSet partage uniquement les sources `Constants`, `CommonClass` et
+`PlatformContext` du package central `group`. Conserver ces trois classes
+indépendantes des API de moteur. Le build Minestom ne doit charger ni le
+projet `common/` avec NeoForm, ni les ressources de mixins.
 Les propriétés partagées restent centralisées dans `gradle.properties`.
 
-Fabric, Forge et NeoForge importent directement les classes de `common/`.
-Leurs points d’entrée transmettent un `PlatformContext` à `CommonClass.init` :
+Les quatre cibles appellent directement `CommonClass.init` avec un
+`PlatformContext` :
 nom de plateforme, indicateur de développement et `Predicate<String>` pour
 consulter les mods chargés. Conserver ce passage explicite du contexte ;
 les appels aux API propres aux modloaders restent dans leurs modules.
+Minestom fournit un prédicat qui retourne toujours `false` et un mode de développement
+explicite, désactivé par défaut ; la tâche `run` lit `minestom_development`.
 
 `common/` est obligatoire. Les cibles `fabric/`, `forge/`, `neoforge/` et
 `minestom/` sont optionnelles : un dossier cible absent doit être exclu
@@ -143,7 +149,9 @@ des fixtures isolées pour valider l’initialisation et les builds centralisés
 y compris le cache de configuration. Une fixture compile aussi le code
 commun d’exemple généré et exécute ses tests de contrat `PlatformContext`
 avec les seules conventions Java, sans résoudre ni lancer Minecraft ou
-un modloader. Ce contrôle ne vaut pas compilation complète ou validation
+un modloader. Une fixture vérifie aussi la sélection des trois sources
+communes dans Minestom, sans dépendance à son moteur.
+Ce contrôle ne vaut pas compilation complète ou validation
 des artefacts du produit. Il s’exécute uniquement dans GitHub Actions.
 
 Avant de lancer une construction, informer l’utilisateur des modules dont

@@ -1,6 +1,6 @@
 package __PACKAGE__;
 
-/** Shared entrypoint that each modloader can import and call directly. */
+/** Engine-independent entrypoint that each target can import and call directly. */
 public class CommonClass {
 
     /**

@@ -5,9 +5,9 @@ Forge et NeoForge sous Java 21, ou serveur Minestom sous Java 25.
 `common/` partage le code des mods ; `minestom/` est une application
 autonome, avec son propre build Gradle.
 
-Fabric, Forge et NeoForge appellent directement les classes de `common/`.
-Chaque point d’entrée transmet un `PlatformContext` à `CommonClass.init` :
+Les quatre cibles appellent `CommonClass.init` avec un `PlatformContext` :
 nom de plateforme, mode de développement et fonction de recherche des mods.
+Minestom compile uniquement les trois classes neutres de cette API commune.
 Voir [l’exemple de contexte](docs/developpement.md#contexte-du-code-partagé).
 
 ## Configuration
@@ -87,8 +87,9 @@ compiler ou tester.
 
 Minestom est un serveur autonome et possède sa propre API. Le module ne
 charge pas les mods Fabric, Forge ou NeoForge et ne réutilise pas les classes
-`net.minecraft` de `common/`. Son exemple de démarrage et son test servent
-de base au futur serveur. Voir [la configuration Minestom](docs/minestom.md).
+`net.minecraft` de `common/`. Il partage `Constants`, `CommonClass` et
+`PlatformContext` par ses sources, avec un contexte de développement
+explicite. Voir [la configuration Minestom](docs/minestom.md).
 
 ## Mise à jour des dépendances
 

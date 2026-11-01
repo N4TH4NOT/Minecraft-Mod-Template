@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+import zipfile
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -34,20 +35,27 @@ class GradleScaffoldTest(unittest.TestCase):
             self.assertEqual(1, count, "The central property must exist: " + key)
         (self.root / "gradle.properties").write_text(configuration, encoding="utf-8")
 
-    def gradle(self, directory, tasks, succeeds=True, configuration_cache=False):
+    def gradle(self, directory, tasks, succeeds=True, configuration_cache=False, standalone=False):
         installations = ["JAVA_HOME_" + version + "_X64"
                          for version in os.environ["CI_JAVA_VERSIONS"].split()]
         for name in installations:
             self.assertTrue(os.environ.get(name) and Path(os.environ[name]).is_dir(),
                             "Configured Java installation is missing: " + name)
+        environment = os.environ.copy()
+        wrapper = REPOSITORY / "gradlew"
+        if standalone:
+            wrapper = self.root / "minestom/gradlew"
+            configuration = (self.root / "gradle.properties").read_text(encoding="utf-8")
+            runtime = re.search(r"^minestom_gradle_java_version=(\d+)$", configuration, re.M).group(1)
+            environment["JAVA_HOME"] = os.environ["JAVA_HOME_" + runtime + "_X64"]
         result = subprocess.run(
-            [str(REPOSITORY / "gradlew"), "--no-daemon", "--console=plain", "--stacktrace",
+            [str(wrapper), "--no-daemon", "--console=plain", "--stacktrace",
              "--configuration-cache" if configuration_cache else "--no-configuration-cache",
              "-Porg.gradle.java.installations.auto-detect=false",
              "-Porg.gradle.java.installations.auto-download=false",
              "-Porg.gradle.java.installations.fromEnv=" + ",".join(installations),
              "-p", str(directory), *tasks],
-            cwd=REPOSITORY, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            cwd=REPOSITORY, env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, timeout=300,
         )
         print(result.stdout)
@@ -161,6 +169,50 @@ class GradleScaffoldTest(unittest.TestCase):
         self.assertEqual("0", suite.get("failures"))
         self.assertEqual("0", suite.get("errors"))
         print(f"Generated CommonClassTest: {executed} tests executed without failures or errors")
+
+    def test_minestom_packages_only_shared_platform_api_without_minecraft(self):
+        configuration = (self.root / "gradle.properties").read_text(encoding="utf-8")
+        declared = re.search(r"^modules=(.*)$", configuration, re.M).group(1).split(",")
+        if not (REPOSITORY / "minestom").is_dir() or "minestom" not in [name.strip() for name in declared]:
+            self.skipTest("Minestom is absent or excluded from this project")
+        for module in ("common", "minestom"):
+            (self.root / module).mkdir()
+        self.bootstrap()
+        # A Minecraft-dependent class and resource must remain exclusive to mods.
+        (self.root / "common/src/main/java/org/example/template/MinecraftOnly.java").write_text(
+            "package org.example.template;\n"
+            "class MinecraftOnly { net.minecraft.world.item.Item item; }\n", encoding="utf-8")
+        (self.root / "common/src/main/resources/mod-only.txt").write_text("Not a server resource.\n", encoding="utf-8")
+        # Exercise the real standalone build and its shared source selection,
+        # with only the generated Java contract (no engine dependency or server).
+        with (self.root / "gradle/modules/minestom.gradle").open("a", encoding="utf-8") as script:
+            script.write(
+                "\nconfigurations.implementation.dependencies.removeAll { it.group == 'net.minestom' }\n"
+                "sourceSets.main.java.exclude('org/example/server/**')\n"
+                "sourceSets.test.java.setSrcDirs([new File(templateRootDirectory, 'common/src/test/java')])\n"
+                "sourceSets.test.java.include('org/example/template/CommonClassTest.java')\n")
+        self.gradle(self.root / "minestom", ["test", "jar", "sourcesJar"], standalone=True)
+        report = self.root / "minestom/build/test-results/test/TEST-org.example.template.CommonClassTest.xml"
+        suite = ET.parse(report).getroot()
+        executed = int(suite.get("tests", "0")) - int(suite.get("skipped", "0"))
+        self.assertGreater(executed, 0)
+        self.assertEqual("0", suite.get("failures"))
+        self.assertEqual("0", suite.get("errors"))
+        libraries = self.root / "minestom/build/libs"
+        sources = list(libraries.glob("*-sources.jar"))
+        jars = [jar for jar in libraries.glob("*.jar") if jar not in sources]
+        self.assertEqual(1, len(jars))
+        self.assertEqual(1, len(sources))
+        expected = {"org/example/template/" + name for name in ("Constants", "CommonClass", "PlatformContext")}
+        with zipfile.ZipFile(jars[0]) as archive:
+            self.assertEqual({name + ".class" for name in expected},
+                             {name for name in archive.namelist() if name.endswith(".class")})
+            self.assertNotIn("pack.mcmeta", archive.namelist())
+            self.assertNotIn("mod-only.txt", archive.namelist())
+        with zipfile.ZipFile(sources[0]) as archive:
+            self.assertEqual({name + ".java" for name in expected},
+                             {name for name in archive.namelist() if name.endswith(".java")})
+        print(f"Minestom shared API: {executed} tests executed; only the three shared classes packaged")
 
 
 if __name__ == "__main__":

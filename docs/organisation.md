@@ -1,7 +1,8 @@
 # Organisation du dépôt
 
-- `common/` : sources et ressources partagées par les mods ; `PlatformContext`
-  porte les informations et le callback transmis par chaque modloader.
+- `common/` : sources et ressources partagées par les mods ; les classes
+  neutres `Constants`, `CommonClass` et `PlatformContext` sont aussi compilées
+  par Minestom. Le contexte reçoit les informations et le callback de la cible.
 - `fabric/`, `forge/`, `neoforge/` : implémentations des modloaders.
 - `minestom/` : application serveur indépendante, avec `settings.gradle`,
   son wrapper Gradle et ses sources ; son build est centralisé avec les autres.
@@ -31,9 +32,12 @@ Les chemins `src/` et `build/` restent relatifs au dossier de chaque module.
 `common/` reste obligatoire. Les plugins des cibles
 absentes ne sont pas chargés inutilement.
 Le build Minestom lit ces mêmes propriétés, mais reste séparé du build racine.
-Il ne dépend pas de `common/`, dont le code utilise l’API Minecraft vanilla.
-Le dossier `common/` reste requis pour la cohérence du template, même
-lorsque Minestom est la seule cible conservée.
+Son sourceSet sélectionne uniquement les trois classes neutres partagées
+dans `common/src/main/java/`, sous le package indiqué par `group`.
+Il compile celles-ci avec Java 25,
+sans configurer le projet `common/`, NeoForm ou les ressources de mixins.
+Le reste de `common/` conserve son accès à l’API Minecraft vanilla.
+Le dossier `common/` reste obligatoire, y compris avec Minestom seul.
 
 Les répertoires `build/`, `.gradle/`, `run/` et `runs/` sont générés et ignorés
 par Git. Les ressources issues de la génération de données Forge/NeoForge
