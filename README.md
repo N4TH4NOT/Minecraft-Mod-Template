@@ -18,9 +18,22 @@ Les consignes de contribution sont dans [AGENTS.md](AGENTS.md).
 
 `common/` est obligatoire. Pour retirer une cible, supprimer simplement
 son dossier `fabric/`, `forge/`, `neoforge/` ou `minestom/` : Gradle et la
-CI l’excluent automatiquement. Le build racine et la CI partagent la liste
-`gradle/modules.txt`. Un dossier présent sans son `build.gradle` est signalé
-comme incomplet. Minestom conserve son build autonome.
+CI l’excluent automatiquement. Les modules, versions, JDK et paramètres de
+développement sont centralisés dans `gradle.properties` ; les scripts de
+build des cibles sont dans `gradle/modules/`.
+
+Pour réintroduire une cible, créer son dossier vide (ou avec `.gitkeep`).
+La prochaine configuration Gradle génère ses sources, ressources et tests
+d’exemple depuis `gradle/templates/`. Les fichiers existants sont conservés.
+Minestom reçoit également son wrapper et son point d’entrée autonome.
+L’initialisation seule est disponible avec :
+
+```sh
+./gradlew -p gradle/bootstrap help
+```
+
+Cette commande ne configure ni ne compile les applications. Consulter
+[la configuration centralisée et l’initialisation](docs/developpement.md).
 
 Avant les tâches, Gradle affiche les modules avec compilation planifiée,
 les dossiers absents exclus et les modules présents non sélectionnés.
@@ -33,8 +46,9 @@ via le workflow **Validate template or build project**. La CI adapte ses contrô
 statut GitHub du dépôt :
 
 - **Template** (`is_template=true`) : validation de la structure, des
-  configurations et de l’outillage de CI. L’absence de code applicatif est
-  acceptée ; aucune compilation applicative n’est exigée.
+  configurations et de l’outillage de CI, avec des tests d’initialisation
+  sur des fixtures Gradle. L’absence de code applicatif est acceptée ;
+  aucune compilation applicative n’est exigée.
 - **Projet dérivé** : compilation et tests des seules cibles présentes,
   avec les versions de Java et de Gradle adaptées à chaque cible. Les
   rapports et les artefacts sont conservés. Une suite absente ou entièrement

@@ -32,8 +32,9 @@ Ne pas créer de dossiers globaux `src/`, `resources/` ou `tests/` à la racine
 pour regrouper ces contenus.
 
 Les fichiers `settings.gradle`, `build.gradle` et `gradle.properties` restent
-à la racine ; chaque module et `buildSrc/` conservent leur `build.gradle`.
-Respecter les emplacements de ressources générées déclarés dans ces fichiers.
+à la racine. Centraliser les builds des cibles dans `gradle/modules/` et
+leurs paramètres et versions dans `gradle.properties`. `buildSrc/` conserve
+son build d’outillage. Respecter les emplacements de ressources générées.
 
 Minestom utilise Java 25 et son wrapper Gradle 9, séparément des mods sous
 Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
@@ -42,9 +43,16 @@ Les propriétés partagées restent centralisées dans `gradle.properties`.
 
 `common/` est obligatoire. Les cibles `fabric/`, `forge/`, `neoforge/` et
 `minestom/` sont optionnelles : un dossier cible absent doit être exclu
-automatiquement de Gradle et de la CI. Conserver la liste des modules du
-build racine dans `gradle/modules.txt`, lue par ces deux outils.
-Un dossier présent sans sa configuration Gradle reste une erreur.
+automatiquement de Gradle et de la CI. Déclarer `modules`, `required_modules`
+et `standalone_modules` dans `gradle.properties`, lus par ces deux outils.
+Un dossier présent utilise sa configuration centrale ; une cible entièrement
+vide ou contenant seulement `.gitkeep` est initialisée depuis `gradle/templates/`
+à la prochaine configuration Gradle. Ne jamais recréer une cible absente
+ni écraser des fichiers existants pendant cette initialisation.
+
+Les versions Java restent configurées explicitement : distinguer la JVM
+qui lance Gradle des toolchains de compilation. Ne pas ajouter d’analyse
+automatique des métadonnées ou du bytecode pour choisir Java.
 
 Si nécessaire, utiliser `docs/` pour la documentation, `scripts/` pour les
 scripts de maintenance et d’automatisation, et `work/` pour les brouillons,
@@ -124,6 +132,9 @@ ses configurations et son outillage sans exiger de compilation ni de
 tests applicatifs. Pour un projet dérivé, compiler les cibles présentes
 et vérifier leurs résultats de tests. Les tests des scripts de CI restent
 dans `scripts/ci/tests/` et s’exécutent eux aussi dans GitHub Actions.
+Les tests d’intégration dans `scripts/ci/integration/` exécutent Gradle sur
+des fixtures sans sources applicatives pour valider l’initialisation et
+les builds centralisés, y compris le cache de configuration.
 
 Avant de lancer une construction, informer l’utilisateur des modules dont
 la compilation est prévue et des modules exclus. Afficher également ce

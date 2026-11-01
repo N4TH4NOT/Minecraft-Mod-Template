@@ -13,22 +13,36 @@ applicatifs. Elle contrôle la structure et les fichiers de configuration
 nécessaires aux cibles déclarées, les propriétés, les ressources du modèle
 et les wrappers. Les placeholders des ressources sont normaux à ce stade.
 
-Les tests Python des scripts de CI vérifient notamment la sélection du
+Les tests unitaires Python des scripts de CI vérifient notamment la sélection du
 parcours, l’acceptation d’un template sans sources, ainsi que le refus de
 rapports de projet absents ou sans test exécuté. Ces contrôles ne sont pas
 présentés comme une compilation ou un essai de démarrage du produit.
 
+Un job distinct exécute le vrai initialiseur Gradle sur des fixtures
+temporaires. Il vérifie le rendu des fichiers, l’identité du projet, la
+préservation des fichiers existants et l’idempotence. Il configure aussi
+deux modules sans sources pour vérifier les scripts centraux et le bilan
+avec réutilisation du cache. Aucune application n’est compilée.
+
 ## Parcours projet
 
-La matrice est construite à partir de `gradle/modules.txt`, également lu
-par Gradle, et des dossiers réellement présents. Supprimer `forge/`, par
-exemple, suffit à l’exclure sans modifier cette liste ni `settings.gradle`.
-Les autres cibles restent disponibles. Un dossier présent mais incomplet
-est signalé comme une erreur. `common/` et son entrée dans la liste restent
-obligatoires. Conserver au moins une cible applicative.
+La matrice est construite à partir de `modules`, `required_modules` et
+`standalone_modules` dans `gradle.properties`, également lus par Gradle,
+et des dossiers réellement présents. Supprimer `forge/`, par exemple,
+suffit à l’exclure. Les autres cibles restent disponibles. `common/` reste
+obligatoire. Conserver au moins une cible applicative.
 
 Le build autonome Minestom est détecté séparément du build multi-module
-des mods et ne doit pas figurer dans `gradle/modules.txt`.
+des mods : il figure dans `modules` et `standalone_modules`.
+
+Les JDK installés proviennent des propriétés centrales : runtime de Gradle,
+toolchain de chaque cible et JDK de `buildSrc`. La détection et le téléchargement
+implicites des toolchains sont désactivés dans les builds de CI. Les wrappers
+sont comparés aux versions et aux empreintes SHA-256 déclarées.
+
+Si un dossier présent est vide, la CI indique qu’il sera initialisé. En
+mode projet, elle lance le bootstrap avant la construction ; en mode template,
+elle vérifie les presets sans modifier les dossiers de l’application.
 
 | Cible | Chaîne | Contrôles applicatifs |
 | --- | --- | --- |

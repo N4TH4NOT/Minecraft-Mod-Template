@@ -27,8 +27,9 @@ la dépendance correspond à `minecraft_version`. L’outil de mise à jour
 des modloaders laisse ces propriétés Minestom inchangées.
 
 Le wrapper du dossier `minestom/` fournit Gradle 9.1.0. Le wrapper racine
-reste sous Gradle 8 pour Forge. Ne pas ajouter Minestom aux inclusions du
-`settings.gradle` racine : les deux builds utilisent des chaînes distinctes.
+reste sous Gradle 8 pour Forge. Minestom est déclaré dans `modules` et
+`standalone_modules` : les deux builds utilisent des chaînes distinctes.
+Son script est `gradle/modules/minestom.gradle`.
 Dans GitHub Actions, le parcours projet lance depuis la racine :
 
 ```sh
