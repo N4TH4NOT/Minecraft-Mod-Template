@@ -263,11 +263,15 @@ def verify_config(config, active, reader=None, **remote_options):
 
 
 def markdown_summary(report):
+    statuses = {"checked": "✅ Checked", "failed": "❌ Failed",
+                "unverified": "⚠️ Unverified", "skipped": "⏭️ Skipped"}
     lines = ["### Published version metadata", "", f"Result: **{report['result']}**", "",
              "| Property | Value | Status | Detail |", "| --- | --- | --- | --- |"]
     for entry in report["pins"]:
         escape = lambda value: str(value).replace("|", "\\|").replace("\n", " ")
-        lines.append("| " + " | ".join(escape(entry.get(key, "")) for key in ("property", "value", "status", "detail")) + " |")
+        values = [entry.get("property", ""), entry.get("value", ""),
+                  statuses.get(entry.get("status"), entry.get("status", "")), entry.get("detail", "")]
+        lines.append("| " + " | ".join(escape(value) for value in values) + " |")
     if report.get("error"):
         lines.extend(["", "Configuration error: " + str(report["error"]).replace("\n", " ")])
     lines.extend(["", "Metadata only; no dependency download or compatibility claim.", ""])
