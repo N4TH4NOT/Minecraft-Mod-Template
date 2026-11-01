@@ -1,0 +1,66 @@
+name: Build Minecraft 1.21.10
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      update_mod_versions:
+        description: Update compatible mod dependencies before building
+        type: boolean
+        default: false
+
+env:
+  ORG_GRADLE_PROJECT_autoUpdateModVersions: ${{ inputs.update_mod_versions && 'true' || 'false' }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test ${{ matrix.loader }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, forge, neoforge]
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Java 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Test the dependency updater
+        if: matrix.loader == 'fabric'
+        run: ./gradlew --no-daemon --max-workers=2 --stacktrace -p buildSrc test
+      - name: Build and run common and loader tests
+        run: ./gradlew --no-daemon --max-workers=2 --no-configuration-cache --stacktrace -PautoUpdateModVersions="$ORG_GRADLE_PROJECT_autoUpdateModVersions" :common:check :${{ matrix.loader }}:build
+      - name: Upload build and test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: reports-${{ matrix.loader }}
+          path: |
+            gradle.properties
+            common/build/reports/
+            common/build/test-results/
+            buildSrc/build/reports/
+            buildSrc/build/test-results/
+            ${{ matrix.loader }}/build/reports/
+            ${{ matrix.loader }}/build/test-results/
+          if-no-files-found: warn
+      - name: Upload mod artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: mod-${{ matrix.loader }}-1.21.10
+          path: ${{ matrix.loader }}/build/libs/*.jar
+          if-no-files-found: error
