@@ -96,6 +96,24 @@ jobs:
               summary.write('\n'.join('- ' + line for line in lines) + '\n')
           PY
 
+  published_versions:
+    name: Verify configured versions in official repositories
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the pinned configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Confirm configured versions in publication metadata
+        run: python3 scripts/ci/validate_published_versions.py --report "$RUNNER_TEMP/published-versions.json" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Upload version verification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: published-versions
+          path: ${{ runner.temp }}/published-versions.json
+          if-no-files-found: warn
+
   scaffold:
     name: Test real Gradle scaffold generation without application compilation
     needs: plan
@@ -132,7 +150,7 @@ jobs:
 
   template:
     name: Validate reusable scaffold without application code
-    needs: plan
+    needs: [plan, published_versions]
     if: needs.plan.outputs.repository_type == 'template'
     runs-on: ubuntu-latest
     steps:
@@ -152,7 +170,7 @@ jobs:
 
   build_tools:
     name: Test Gradle build tooling in a derived project
-    needs: plan
+    needs: [plan, published_versions]
     if: needs.plan.outputs.support_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -200,7 +218,7 @@ jobs:
 
   build:
     name: Build and test ${{ matrix.target }} in a derived project
-    needs: plan
+    needs: [plan, published_versions]
     if: needs.plan.outputs.has_builds == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
