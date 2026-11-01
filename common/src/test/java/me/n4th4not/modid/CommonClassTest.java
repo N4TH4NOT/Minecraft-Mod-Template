@@ -24,6 +24,14 @@ class CommonClassTest {
     }
 
     @Test
+    void identityMatchesTheCentralConfiguration() {
+        assertEquals(System.getProperty("template.mod.id"), Constants.MOD_ID,
+                "Constants.MOD_ID must match mod_id in gradle.properties");
+        assertEquals(System.getProperty("template.mod.name"), Constants.MOD_NAME,
+                "Constants.MOD_NAME must match mod_name in gradle.properties");
+    }
+
+    @Test
     void contextRequiresAPlatformNameAndModLookup() {
         assertThrows(NullPointerException.class, () -> new PlatformContext(null, false, ignored -> false));
         assertThrows(NullPointerException.class, () -> new PlatformContext("Test platform", false, null));

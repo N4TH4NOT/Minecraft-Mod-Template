@@ -36,6 +36,8 @@ tasks.withType(Test).configureEach {
     systemProperty 'template.minecraft.version.range', templateProperty('minecraft_version_range')
     systemProperty 'template.minecraft.pack.version', templateProperty('minecraft_pack_version')
     systemProperty 'template.java.version', effectiveJavaVersion.toString()
+    systemProperty 'template.mod.id', templateProperty('mod_id')
+    systemProperty 'template.mod.name', templateProperty('mod_name')
     maxHeapSize = templateProperty('test_max_heap_size')
 }
 
