@@ -5,28 +5,50 @@ Les conserver lors de l’initialisation d’un projet depuis ce modèle.
 
 ## Organisation
 
-Respecter un emplacement unique par type de contenu :
+Conserver l’organisation Gradle multi-module existante :
 
-- `src/` : code source.
-- `resources/` : ressources de l’application.
-- `tests/` : tests automatisés.
-- `docs/` : documentation.
-- `scripts/` : scripts de maintenance et d’automatisation.
-- `build/` : résultats générés.
-- `work/` : brouillons, analyses et fichiers temporaires.
+- `common/` : code et ressources partagés entre les modloaders.
+- `fabric/` : code et ressources propres à Fabric.
+- `forge/` : code et ressources propres à Forge.
+- `neoforge/` : code et ressources propres à NeoForge.
+- `buildSrc/src/main/groovy/` : conventions de compilation Gradle partagées.
+- `gradle/wrapper/`, `gradlew` et `gradlew.bat` : wrapper Gradle.
 
-Adapter les dossiers d’outillage aux technologies utilisées et documenter
-l’arborescence retenue dans `docs/organisation.md`.
+Dans chaque module, conserver le code Java dans `src/main/java/` et les
+ressources dans `src/main/resources/`.
+
+Réserver un dossier aux tests automatisés de chaque modloader :
+
+- `fabric/src/test/java/` : tests propres à Fabric.
+- `forge/src/test/java/` : tests propres à Forge.
+- `neoforge/src/test/java/` : tests propres à NeoForge.
+
+Placer les tests partagés dans `common/src/test/java/` si nécessaire, et les
+ressources de test dans `src/test/resources/` du module concerné. Conserver
+un fichier `.gitkeep` dans les dossiers de test vides pour les suivre dans Git.
+Ne pas créer de dossiers globaux `src/`, `resources/` ou `tests/` à la racine
+pour regrouper ces contenus.
+
+Les fichiers `settings.gradle`, `build.gradle` et `gradle.properties` restent
+à la racine ; chaque module et `buildSrc/` conservent leur `build.gradle`.
+Respecter les emplacements de ressources générées déclarés dans ces fichiers.
+
+Si nécessaire, utiliser `docs/` pour la documentation, `scripts/` pour les
+scripts de maintenance et d’automatisation, et `work/` pour les brouillons,
+analyses et fichiers temporaires. Documenter les évolutions de l’arborescence
+dans `docs/organisation.md`.
 
 `README.md` et `AGENTS.md` sont les documents d’entrée à la racine.
 Les autres documents vont dans `docs/`. Les fichiers de configuration
 et de licence restent aux emplacements requis par leurs outils.
 
-Ignorer dans Git les sorties générées, les caches et les fichiers temporaires.
+Conserver les résultats de compilation dans les dossiers `build/` de Gradle.
+Ignorer dans Git ces sorties, les caches `.gradle/`, les répertoires
+d’exécution `run/` et `runs/`, ainsi que les fichiers temporaires.
 Ne jamais commiter de secrets.
 
-Pour les projets comportant plusieurs modules, conserver cette organisation
-sans disperser les tests et la documentation.
+Garder les sources, ressources et tests dans leur module respectif,
+et centraliser la documentation complémentaire dans `docs/`.
 
 ## Branches et commits
 
