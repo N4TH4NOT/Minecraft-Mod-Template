@@ -79,6 +79,13 @@ La seconde tâche met aussi à jour les launchers et le JAR du preset Minestom.
 Son fichier de propriétés reste paramétré par les valeurs centrales.
 La CI refuse une divergence entre wrappers et configuration centrale.
 
+Avant l’approbation du template, la CI confirme également la publication
+des versions épinglées des dépendances actives, par leurs métadonnées seules.
+Aucun binaire n’est téléchargé. Le rapport **published-versions** expose
+les sources et les résultats.
+Ajouter une nouvelle dépendance de version nécessite aussi d’ajouter sa
+règle de recherche dans `scripts/ci/validate_published_versions.py`.
+
 Les compilations et tests automatisés restent exécutés exclusivement
 dans GitHub Actions. Le bilan préalable distingue modules avec compilation
 planifiée, cibles absentes et modules présents non sélectionnés.

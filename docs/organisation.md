@@ -18,6 +18,8 @@
 - `scripts/ci/` : sélection du parcours de CI et contrôles du template ;
   `scripts/ci/tests/` contient leurs tests unitaires et `scripts/ci/integration/`
   leurs tests avec Gradle sur des fixtures sans code applicatif.
+- `scripts/ci/validate_published_versions.py` : contrôle en lecture seule
+  de l’existence des versions dans les métadonnées des dépôts officiels.
 - `docs/` : documentation complémentaire.
 
 `gradle.properties` centralise les modules, les versions, les JDK et les

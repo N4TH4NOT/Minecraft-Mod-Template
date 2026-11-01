@@ -24,6 +24,49 @@ préservation des fichiers existants et l’idempotence. Il configure aussi
 deux modules sans sources pour vérifier les scripts centraux et le bilan
 avec réutilisation du cache. Aucune application n’est compilée.
 
+## Versions publiées
+
+Le job **Verify configured versions in official repositories** est requis
+avant la validation du template et les constructions des projets dérivés.
+Il lit `gradle.properties` sans le modifier et confirme l’existence des
+versions utilisées par les cibles configurées et présentes, y compris
+les dossiers vides à initialiser. Les cibles absentes sont exclues du contrôle.
+
+Seules les métadonnées textuelles de publication sont consultées :
+
+- POM Maven correspondant aux coordonnées et à la version de la dépendance ;
+- POM marqueur pour une version de plugin Gradle ;
+- manifeste et JSON de version officiels pour Minecraft ;
+- fichier SHA-256 officiel pour une distribution Gradle.
+
+Ce contrôle ne télécharge aucun JAR, ZIP, classe ou autre binaire, même
+partiellement. Il ne résout pas les dépendances transitives et n’ajoute
+aucune analyse de compatibilité ou sélection automatique de versions.
+Les contrôles Java, Gradle et Minecraft déjà présents restent séparés.
+
+Les paramètres Java, les formats Minecraft et la version du futur produit
+sont identifiés comme des paramètres structurels : aucune publication du
+template lui-même n’est exigée. Une nouvelle propriété de version sans
+règle de recherche ne doit pas être approuvée silencieusement. Les versions
+fixes publiées peuvent être vérifiées ; les sélecteurs dynamiques et les
+snapshots mutables sont refusés.
+
+Une version absente, des métadonnées invalides ou une vérification impossible
+à cause du réseau font échouer le contrôle. Les erreurs réseau ne valent
+pas absence de version et ne sont jamais considérées comme une réussite.
+Les reprises sont limitées aux erreurs transitoires, sans réutilisation
+d’une ancienne validation sur disque.
+
+Le rapport JSON **published-versions** est conservé même en cas d’échec.
+Il indique chaque propriété, son résultat, les URLs consultées et la raison
+des exclusions ou des échecs. La synthèse de l’exécution reprend ces résultats.
+Les tests unitaires de ce contrôleur utilisent des réponses simulées ;
+le job de vérification utilise les dépôts réels.
+
+La publication des artefacts et leurs déclarations ne prouvent pas à elles
+seules la compatibilité de toutes les API avec le futur code du projet.
+Les compilations et tests du parcours projet restent nécessaires pour cela.
+
 ## Parcours projet
 
 La matrice est construite à partir de `modules`, `required_modules` et

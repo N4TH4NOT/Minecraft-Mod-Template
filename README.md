@@ -58,6 +58,12 @@ Le déclenchement manuel permet de choisir `repository_type=template` ou
 `project` pour vérifier les deux parcours ; `auto` suit le statut GitHub.
 Consulter [les contrôles et leur portée](docs/validation.md).
 
+Avant l’approbation, la CI confirme aussi l’existence des versions épinglées
+dans les métadonnées des dépôts officiels : plugins, bibliothèques, Gradle
+et Minecraft. Ce contrôle ne télécharge aucun JAR ou ZIP et ne modifie pas
+`gradle.properties` et conserve un rapport avec les sources consultées.
+Une version introuvable ou une vérification réseau impossible empêche la validation.
+
 En mode projet, les tests vérifient les métadonnées générées, les classes
 d’entrée, les mixins, les services de plateforme et le format des ressources.
 Ils ne remplacent pas un essai de démarrage du jeu.

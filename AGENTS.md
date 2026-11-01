@@ -148,6 +148,13 @@ Une suite vide ne constitue pas une validation.
 Ne pas désactiver une vérification ni affaiblir une assertion pour obtenir
 une CI verte.
 
+Avant de valider le template, confirmer aussi l’existence des versions
+configurées dans les métadonnées des dépôts officiels pour les cibles
+présentes. Ce contrôle ne doit télécharger aucun JAR, ZIP ou autre binaire,
+même partiellement. Il reste en lecture seule et ne remplace pas les versions. Conserver
+les sources et distinguer version introuvable de vérification impossible
+à cause du réseau ; ces deux cas empêchent l’approbation.
+
 Distinguer les vérifications automatisées des essais manuels.
 Ne jamais annoncer un essai manuel comme réalisé sans l’avoir effectué.
 
