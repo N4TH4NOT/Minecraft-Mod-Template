@@ -1,56 +1,56 @@
-[English](developpement.en.md) | [Français](developpement.md)
+[English](developpement.md) | [Français](developpement.fr.md)
 
-# Développer à partir du template
+# Developing from the template
 
-Modifier `gradle.properties` pour configurer Gradle et la CI. Voir
-[l’organisation](organisation.md) pour trouver le code et les ressources.
+Edit `gradle.properties` to configure Gradle and CI. See the
+[repository layout](organisation.md) to find code and resources.
 
-## Paramètres centraux
+## Central settings
 
-| Propriétés | Rôle |
+| Properties | Purpose |
 | --- | --- |
-| `modules`, `required_modules`, `standalone_modules` | Modules déclarés, obligatoires et autonomes |
-| `project_name`, `version`, `group`, `mod_*`, `minestom_main_class` | Identité du projet et des sources initiales |
-| `java_version`, `<module>_java_version`, `buildsrc_java_version` | JDK de compilation des modules et de l’outillage |
-| `gradle_java_version`, `minestom_gradle_java_version` | JDK qui lance chaque build Gradle |
-| `gradle_version`, `minestom_gradle_version`, `*_distribution_sha256` | Versions et empreintes des wrappers |
-| Versions des plugins et bibliothèques | Dépendances des scripts centraux |
-| `run_*_directory`, `generated_resources_directory`, `java_encoding`, `test_max_heap_size` | Chemins, encodage et mémoire des tests |
-| `minestom_development` | Mode de développement du contexte Minestom, désactivé par défaut |
+| `modules`, `required_modules`, `standalone_modules` | Declared, required and standalone modules |
+| `project_name`, `version`, `group`, `mod_*`, `minestom_main_class` | Project identity and initial source identity |
+| `java_version`, `<module>_java_version`, `buildsrc_java_version` | Compiler JDKs for modules and build tooling |
+| `gradle_java_version`, `minestom_gradle_java_version` | JDK running each Gradle build |
+| `gradle_version`, `minestom_gradle_version`, `*_distribution_sha256` | Wrapper versions and checksums |
+| Plugin and library versions | Dependencies used by the central scripts |
+| `run_*_directory`, `generated_resources_directory`, `java_encoding`, `test_max_heap_size` | Paths, encoding and test memory |
+| `minestom_development` | Minestom context development flag, disabled by default |
 
-Choisir l’identité avant de générer les sources : modifier ensuite `group`
-ou `mod_id` ne renomme pas le code existant. Consulter les
-[versions de référence](configuration.md) et les [règles de versionnement](versionnement.md).
+Choose the identity before generating sources: changing `group` or `mod_id`
+later does not rename existing code. See the
+[reference versions](configuration.md) and [versioning rules](versionnement.md).
 
-## Ajouter ou retirer une cible
+## Add or remove a target
 
-`common/` est obligatoire. Supprimer un dossier `fabric/`, `forge/`,
-`neoforge/` ou `minestom/` l’exclut de Gradle et de la CI, sans modifier la
-liste centrale ni recréer le dossier absent.
+`common/` is required. Deleting `fabric/`, `forge/`, `neoforge/` or `minestom/`
+excludes that directory from Gradle and CI, without editing the central
+list or recreating the missing directory.
 
-Pour réintroduire une cible déclarée, créer son dossier vide, ou avec
-`.gitkeep` seul, puis lancer depuis la racine :
+To restore a declared target, create an empty directory, or one containing
+only `.gitkeep`, then run from the repository root:
 
 ```sh
 mkdir forge
 ./gradlew -p gradle/bootstrap help
 ```
 
-Le bootstrap copie les exemples de `gradle/templates/` avec l’identité
-configurée, sans construire les applications ni modifier les dossiers non
-vides. Une configuration Gradle habituelle initialise aussi les cibles.
-Pour Minestom vide, utiliser d’abord ce bootstrap pour créer son wrapper.
+The bootstrap copies examples from `gradle/templates/` using the configured
+identity, without building applications or changing nonempty directories.
+Regular Gradle configuration also initializes targets. For an empty Minestom
+directory, use this bootstrap first to create its wrapper.
 
-## Contexte du code partagé
+## Shared platform context
 
-Les quatre cibles appellent `CommonClass.init(context)` avec un
-`PlatformContext` : nom, mode de développement et prédicat de recherche des mods.
-Fabric, Forge et NeoForge utilisent `common/`, qui garde l’accès à Minecraft vanilla.
-Minestom compile uniquement `Constants`, `CommonClass` et `PlatformContext`
-depuis le package `group`. Ces trois classes restent neutres ; le build
-`common/`, NeoForm et les ressources de mixins ne sont pas inclus dans Minestom.
+All four targets call `CommonClass.init(context)` with a `PlatformContext`:
+platform name, development flag and mod lookup predicate. Fabric, Forge and
+NeoForge use `common/`, which retains access to vanilla Minecraft.
+Minestom compiles only `Constants`, `CommonClass` and `PlatformContext` from
+the `group` package. These three classes stay engine-independent; the
+`common/` build, NeoForm and mixin resources are not included in Minestom.
 
-Exemple dans le point d’entrée Fabric, avec `net.fabricmc.loader.api.FabricLoader` importé :
+Example inside the Fabric entrypoint, with `net.fabricmc.loader.api.FabricLoader` imported:
 
 ```java
 var loader = FabricLoader.getInstance();
@@ -59,37 +59,37 @@ var context = new PlatformContext("Fabric", loader.isDevelopmentEnvironment(),
 CommonClass.init(context);
 ```
 
-Le code partagé utilise `context.isModLoaded().test(modId)`. Les appels aux
-API des modloaders restent dans leurs modules ; le prédicat Minestom retourne
-`false`. Pour partager d’autres classes neutres, adapter la sélection dans
+Shared code uses `context.isModLoaded().test(modId)`. Calls to modloader APIs
+stay in their modules; Minestom's predicate returns `false`. To share more
+engine-independent classes, update the selection in
 `gradle/modules/minestom.gradle`.
 
-## JDK et wrappers
+## JDKs and wrappers
 
-Le JDK qui lance Gradle peut différer de celui qui compile les sources.
-Par défaut : Java 21 et wrapper racine Gradle 8 pour les mods ; Java 25 et
-wrapper Gradle 9 pour Minestom. La CI installe les JDK déclarés. Dans l’IDE,
-importer le build racine pour les mods et le build `minestom/` séparément.
+The JDK running Gradle may differ from the one compiling the sources.
+Defaults: Java 21 and the root Gradle 8 wrapper for mods; Java 25 and the
+Gradle 9 wrapper for Minestom. CI installs the declared JDKs. In your IDE,
+import the root build for mods and the `minestom/` build separately.
 
-Conserver les scripts et JAR des wrappers. Après modification des versions
-ou empreintes centrales, synchroniser les fichiers :
+Keep the wrapper scripts and JARs. After changing central versions or
+checksums, synchronize the files:
 
 ```sh
 ./gradlew wrapper
 ./minestom/gradlew -p minestom syncWrapperPreset
 ```
 
-La seconde tâche synchronise aussi le preset Minestom. La CI refuse les
-écarts avec les propriétés. Les références GitHub Actions restent épinglées dans le workflow.
-Pour activer le mode de développement, utiliser `-Pminestom_development=true`
-avec `run`, ou `JAVA_OPTS='-Dtemplate.development=true'` pour une distribution ;
-voir [les exemples Minestom](minestom.md).
+The second task also synchronizes the Minestom preset. CI rejects differences
+from the properties. GitHub Action references remain pinned in the workflow.
+Enable development mode with `-Pminestom_development=true` for `run`, or
+`JAVA_OPTS='-Dtemplate.development=true'` for a distribution; see the
+[Minestom examples](minestom.md).
 
-## Vérification
+## Validation
 
-Les compilations et tests automatisés s’exécutent dans GitHub Actions ;
-[le guide de validation](validation.md) en précise la portée. La CI indique
-les modules sélectionnés et confirme les versions par leurs métadonnées.
-Le [guide des mises à jour](mises-a-jour.md) décrit les tâches de recherche
-et d’application des nouvelles versions. Voir aussi les
-[consignes de contribution](AGENTS.fr.md) et le [README](README.fr.md).
+Automated builds and tests run in GitHub Actions; the
+[validation guide](validation.md) explains their scope. CI reports the
+selected modules and confirms versions through publisher metadata.
+The [dependency update guide](mises-a-jour.md) describes the tasks for
+finding and applying newer versions. See also the
+[contribution rules](../AGENTS.md) and [README](../README.md).

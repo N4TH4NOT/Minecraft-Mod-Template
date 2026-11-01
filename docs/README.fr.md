@@ -35,8 +35,8 @@ de développement et un callback de recherche des mods. Minestom compile les
 mêmes trois classes indépendantes du moteur : `Constants`, `CommonClass` et
 `PlatformContext`.
 
-Voir [le développement et le code partagé](developpement.md) et
-[les options de démarrage Minestom](minestom.md).
+Voir [le développement et le code partagé](developpement.fr.md) et
+[les options de démarrage Minestom](minestom.fr.md).
 
 ## Valider les changements
 
@@ -52,15 +52,15 @@ avec les valeurs `auto`, `template` et `project`. Il annonce les modules à
 compiler, absents et non sélectionnés avant les builds. Le contrôle des
 versions consulte les métadonnées officielles sans télécharger les binaires.
 
-Voir [les contrôles et limites de la CI](validation.md). Les tâches
+Voir [les contrôles et limites de la CI](validation.fr.md). Les tâches
 `checkModUpdates` et `updateModVersions` conservent la version Minecraft ;
-[les options de mise à jour](mises-a-jour.md) couvrent les modes manuel et automatique.
+[les options de mise à jour](mises-a-jour.fr.md) couvrent les modes manuel et automatique.
 
 ## Référence
 
-- [Configuration et versions épinglées](configuration.md)
-- [Organisation du dépôt](organisation.md)
-- [Versionnement](versionnement.md)
+- [Configuration et versions épinglées](configuration.fr.md)
+- [Organisation du dépôt](organisation.fr.md)
+- [Versionnement](versionnement.fr.md)
 - [Consignes de contribution](AGENTS.fr.md)
 
 Basé sur [MultiLoader-Template](https://github.com/jaredlll08/MultiLoader-Template)

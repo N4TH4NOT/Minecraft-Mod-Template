@@ -27,7 +27,7 @@ Conserver `settings.gradle`, `build.gradle` et `gradle.properties` à la racine.
 Centraliser versions, JDK, modules et paramètres de développement dans
 `gradle.properties` ; conserver le build d’outillage propre à `buildSrc/`.
 Respecter les chemins des ressources générées. Mettre à jour les deux langues
-du [guide d’organisation](organisation.md) lors d’un changement d’arborescence.
+du [guide d’organisation](organisation.fr.md) lors d’un changement d’arborescence.
 
 `common/` est obligatoire. Une cible optionnelle absente est exclue automatiquement.
 `modules`, `required_modules` et `standalone_modules` pilotent Gradle et la CI.
@@ -51,11 +51,13 @@ développement est explicite, désactivé par défaut. La tâche Gradle `run` li
 Configurer Java explicitement. Distinguer la JVM de Gradle des toolchains de
 compilation ; ne pas déduire Java des métadonnées ou du bytecode.
 
-Garder `README.md` et `AGENTS.md` comme entrées anglaises à la racine. Leurs
-versions françaises vont dans `docs/`. Les autres guides restent dans `docs/`,
-avec leurs équivalents français/anglais et des liens de bascule réciproques.
-Synchroniser les changements techniques entre traductions. Les configurations
-et licences restent aux emplacements attendus par les outils.
+L’anglais est la langue de documentation par défaut. Garder `README.md` et
+`AGENTS.md` en anglais à la racine ; les guides anglais de `docs/` utilisent
+`.md` sans suffixe de langue. Seules les traductions françaises portent
+`.fr.md`, y compris `docs/README.fr.md` et `docs/AGENTS.fr.md`.
+Conserver des liens de bascule réciproques et synchroniser
+les changements techniques entre traductions. Les configurations et licences
+restent aux emplacements attendus par les outils.
 
 Conserver les sorties de build dans `build/`. Ignorer `.gradle/`, `run/`, `runs/`
 et les fichiers temporaires. Ne jamais commiter de secrets. Préserver les
@@ -73,6 +75,9 @@ facultative et les mêmes types que les branches. **Titres et descriptions des
 commits doivent être exclusivement en anglais.** Séparer les changements
 indépendants et conserver les commits thématiques lors d’une fusion, sauf
 demande contraire.
+
+Lors de la traduction d’anciens messages de commit, conserver les horodatages
+de l’auteur et du committer, y compris leurs fuseaux horaires.
 
 Utiliser l’identité de l’agent pour l’auteur et le committer. Avant chaque commit,
 vérifier l’origine de `user.name` et `user.email`, puis exécuter
@@ -123,7 +128,7 @@ de CI. `0.y.z` reste instable ; le nombre de fonctionnalités ne justifie pas `1
 Centraliser la version du produit dans `gradle.properties`. Ne pas réutiliser un
 numéro d’artefact distribué pour un contenu différent. Choisir une version Minestom
 publiée pour le `minecraft_version` exact, sans dernière version globale ni
-sélecteur dynamique. Voir [le versionnement](versionnement.md).
+sélecteur dynamique. Voir [le versionnement](versionnement.fr.md).
 
 Les préversions sont autorisées sur les branches de travail. Sur `main`, la version
 du produit doit être exactement `MAJOR.MINOR.PATCH` : trois entiers sans zéro

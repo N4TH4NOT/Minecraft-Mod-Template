@@ -1,36 +1,34 @@
-[English](configuration.en.md) | [Français](configuration.md)
+[English](configuration.md) | [Français](configuration.fr.md)
 
-# Configuration de Minecraft 1.21.10
+# Minecraft 1.21.10 configuration
 
-[`gradle.properties`](../gradle.properties) centralise l’identité du projet,
-les modules, les versions et les paramètres de développement. Les scripts
-des cibles se trouvent dans `gradle/modules/` ; leurs sources et sorties
-restent dans les dossiers des modules.
+[`gradle.properties`](../gradle.properties) centralizes project identity,
+modules, versions and development settings. Target build scripts live in
+`gradle/modules/`; sources and build outputs stay in each module's directory.
 
-## Java et Gradle
+## Java and Gradle
 
-| Cible | JDK | Wrapper Gradle |
+| Target | JDK | Gradle wrapper |
 | --- | --- | --- |
-| `common`, Fabric, Forge, NeoForge | 21 | 8.14.6 à la racine |
-| Minestom autonome | 25 | 9.1.0 dans `minestom/` |
+| `common`, Fabric, Forge, NeoForge | 21 | 8.14.6 at the repository root |
+| Standalone Minestom | 25 | 9.1.0 in `minestom/` |
 
-`<module>_java_version` règle le compilateur d’une cible, avec `java_version`
-comme défaut. `gradle_java_version` et `minestom_gradle_java_version` règlent
-la JVM qui exécute chaque build. Ce sont deux rôles distincts : changer
-le compilateur ne change pas automatiquement la JVM de Gradle.
+`<module>_java_version` selects a target's compiler, falling back to
+`java_version`. `gradle_java_version` and `minestom_gradle_java_version`
+select the JVM running each build. These are separate roles: changing the
+compiler does not automatically change Gradle's runtime JVM.
 
-ForgeGradle 6 exige Gradle inférieur à 9. Java 25 nécessite Gradle 9.1 ou
-plus récent, d’où le build Minestom séparé. Les distributions des wrappers
-sont protégées par les propriétés `*_distribution_sha256`. Les tâches
-de mise à jour des wrappers lisent les versions centrales ; voir
-[le développement](developpement.md).
+ForgeGradle 6 requires Gradle below 9. Java 25 needs Gradle 9.1 or newer,
+which is why Minestom has a separate build. Wrapper distributions are
+protected by the `*_distribution_sha256` properties. Wrapper update tasks
+read the central versions; see [development](developpement.md).
 
-## Versions retenues
+## Pinned versions
 
-Cette branche cible exactement Minecraft **1.21.10**. Les descripteurs des
-mods excluent les versions suivantes du jeu.
+This branch targets exactly Minecraft **1.21.10**. Mod descriptors exclude
+later game versions.
 
-| Dépendance | Version |
+| Dependency | Version |
 | --- | --- |
 | Fabric Loader | 0.20.1 |
 | Fabric API | 0.138.4+1.21.10 |
@@ -44,7 +42,7 @@ mods excluent les versions suivantes du jeu.
 | MixinExtras | 0.5.5 |
 | Minestom | 2025.12.19-1.21.10 |
 
-| Plugin de build | Version |
+| Build plugin | Version |
 | --- | --- |
 | Fabric Loom | 1.13.6 |
 | ModDevGradle | 2.0.148 |
@@ -52,37 +50,33 @@ mods excluent les versions suivantes du jeu.
 | MixinGradle | 0.7.38 |
 | Foojay resolver | 1.0.0 |
 
-Parchment est résolu depuis le miroir Maven NeoForge. MixinExtras embarque
-le runtime propre à chaque modloader avec la même version que celle de
-compilation. Les formats des packs Minecraft sont **69** pour les ressources
-et **88** pour les données ; `pack.mcmeta` déclare aussi `min_format` et
-`max_format`.
+Parchment resolves through NeoForge's Maven mirror. MixinExtras bundles
+the loader-specific runtime at the same version used for compilation.
+Minecraft pack formats are **69** for resources and **88** for data;
+`pack.mcmeta` also declares `min_format` and `max_format`.
 
-Les tâches `checkModUpdates` et `updateModVersions` conservent la version
-Minecraft. Elles laissent Java, Gradle, les plugins et Minestom inchangés :
-voir [les mises à jour](mises-a-jour.md). Pour Minestom, choisir une version
-publiée pour le jeu ciblé, comme décrit dans [sa configuration](minestom.md).
+The `checkModUpdates` and `updateModVersions` tasks keep the Minecraft
+version fixed. They leave Java, Gradle, plugins and Minestom unchanged;
+see [dependency updates](mises-a-jour.md). For Minestom, choose a release
+published for the target game, as described in [its configuration](minestom.md).
 
-## Modules et validation
+## Modules and validation
 
-`modules`, `required_modules` et `standalone_modules` pilotent Gradle et la
-CI. `common/` est obligatoire ; une cible absente est exclue. Un dossier
-de cible vide, ou contenant seulement `.gitkeep`, est initialisé depuis
-`gradle/templates/` sans modifier les dossiers déjà remplis.
+`modules`, `required_modules` and `standalone_modules` drive both Gradle
+and CI. `common/` is required; missing targets are excluded. An empty target
+directory, or one containing only `.gitkeep`, is initialized from
+`gradle/templates/` without changing populated directories.
 
-Les quatre cibles passent un `PlatformContext` à `CommonClass.init`.
-Minestom partage seulement les trois classes neutres `Constants`,
-`CommonClass` et `PlatformContext` ; les API des moteurs restent dans leurs
-cibles respectives.
+All four targets pass a `PlatformContext` to `CommonClass.init`. Minestom
+shares only the three engine-independent classes `Constants`, `CommonClass`
+and `PlatformContext`; engine APIs stay in their respective targets.
 
-En mode template, la CI accepte l’absence de code applicatif et vérifie
-le modèle et ses outils. Le mode projet compile les cibles présentes et
-exécute leurs tests. Les tests de métadonnées des mods ne démarrent pas
-Minecraft ; le test Minestom démarre réellement un serveur. Les rapports
-sont conservés, y compris en cas d’échec. Voir [la validation](validation.md).
+In template mode, CI accepts missing application code and checks the scaffold
+and its tools. Project mode compiles the present targets and runs their tests.
+Mod metadata tests do not start Minecraft; the Minestom test starts a real
+server. Reports are retained, including on failure. See [validation](validation.md).
 
-La publication Maven est facultative : définir `local_maven_url` uniquement
-pour publier vers le dépôt choisi. Aucun secret de publication n’est requis
-pour les constructions ou les tests.
+Maven publishing is optional: set `local_maven_url` only when publishing to
+your chosen repository. Builds and tests do not require publishing secrets.
 
-Retour à [l’accueil](README.fr.md) et aux [consignes](AGENTS.fr.md).
+Back to the [overview](../README.md) and [contribution instructions](../AGENTS.md).

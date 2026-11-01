@@ -1,81 +1,80 @@
-[English](minestom.en.md) | [Français](minestom.md)
+[English](minestom.md) | [Français](minestom.fr.md)
 
-# Minestom pour Minecraft 1.21.10
+# Minestom for Minecraft 1.21.10
 
-`minestom/` est un serveur autonome : il utilise son propre moteur et ne
-charge pas les mods Fabric, Forge ou NeoForge. Il requiert **Java 25** et
-son wrapper **Gradle 9.1.0**. Le build des mods conserve Java 21 et Gradle 8.
+`minestom/` is a standalone server: it uses its own engine and does not
+load Fabric, Forge or NeoForge mods. It requires **Java 25** and its own
+**Gradle 9.1.0** wrapper. The mod build keeps Java 21 and Gradle 8.
 
-La dépendance retenue est `net.minestom:minestom:2025.12.19-1.21.10`.
-Choisir une version publiée pour le `minecraft_version` du projet, et non
-la dernière version générale : le build vérifie ce suffixe. Java 25 est
-requis depuis la [première version Minestom pour 1.21.10](https://github.com/Minestom/Minestom/releases/tag/2025.10.11-1.21.10).
+The pinned dependency is `net.minestom:minestom:2025.12.19-1.21.10`.
+Choose a release published for the project's `minecraft_version`, rather
+than the latest Minestom release overall: the build checks this suffix.
+Java 25 has been required since the [first Minestom release for 1.21.10](https://github.com/Minestom/Minestom/releases/tag/2025.10.11-1.21.10).
 
-## Configuration et construction
+## Configuration and build
 
-Les paramètres sont dans [`gradle.properties`](../gradle.properties) :
+Settings live in [`gradle.properties`](../gradle.properties):
 `minestom_version`, `minestom_java_version`, `minestom_gradle_version`,
-`minestom_main_class` et `minestom_development`. Minestom figure dans
-`modules` et `standalone_modules` ; son script central est
+`minestom_main_class` and `minestom_development`. Minestom appears in both
+`modules` and `standalone_modules`; its central build script is
 `gradle/modules/minestom.gradle`.
 
-En mode projet, GitHub Actions construit la cible depuis la racine :
+In project mode, GitHub Actions builds this target from the repository root:
 
 ```sh
 ./minestom/gradlew -p minestom --no-daemon --stacktrace build
 ```
 
-Utiliser la distribution ZIP/TAR produite dans `minestom/build/distributions/` :
-elle contient les scripts de lancement et leurs dépendances. Le JAR seul
-ne suffit pas à lancer le serveur.
+Use the ZIP/TAR distribution produced in `minestom/build/distributions/`:
+it includes the launch scripts and their dependencies. The JAR alone is
+not enough to run the server.
 
-## Exemple fourni
+## Provided example
 
-`MinestomServer` crée un monde plat et un point d’apparition. Depuis la
-distribution extraite, avec un JDK 25 :
+`MinestomServer` creates a flat world and a spawn point. From the extracted
+distribution, with a JDK 25:
 
 ```sh
 ./bin/modid-minestom-1.21.10 127.0.0.1 25565
 ```
 
-Le nom du script dépend de `mod_id` et `minecraft_version`. Sans arguments,
-l’exemple écoute sur `127.0.0.1:25565`. Il utilise `Auth.Offline()` pour le
-développement local ; choisir l’authentification du futur serveur avant
-de l’ouvrir au réseau. Sous Windows, utiliser le script `.bat` correspondant.
+The script name comes from `mod_id` and `minecraft_version`. With no
+arguments, the example listens on `127.0.0.1:25565`. It uses `Auth.Offline()`
+for local development; choose the future server's authentication mode
+before exposing it to a network. On Windows, use the matching `.bat` script.
 
-L’exemple appelle `CommonClass.init(context)`, comme les trois modloaders.
-Son `PlatformContext` porte le nom `Minestom` et le mode de développement
-choisi ; `context.isModLoaded().test(id)` retourne toujours `false`, puisque
-Minestom ne charge pas de mods. Le contexte est accessible par
+The example calls `CommonClass.init(context)`, as the three modloaders do.
+Its `PlatformContext` contains the name `Minestom` and the selected
+development mode; `context.isModLoaded().test(id)` always returns `false`,
+because Minestom does not load mods. Read the context through
 `server.platformContext()`.
 
-`start(host, port, development)` choisit explicitement ce mode ; la surcharge
-à deux arguments utilise `false`. Pour la tâche Gradle `run` :
+`start(host, port, development)` selects the mode explicitly; the two-argument
+overload uses `false`. For the Gradle `run` task:
 
 ```sh
 ./minestom/gradlew -p minestom run -Pminestom_development=true
 ```
 
-Le point d’entrée `main` lit la propriété JVM `template.development`,
-désactivée par défaut. Dans une distribution :
+The `main` entrypoint reads the `template.development` JVM property,
+disabled by default. In a distribution:
 
 ```sh
 JAVA_OPTS='-Dtemplate.development=true' ./bin/modid-minestom-1.21.10
 ```
 
-## Code partagé et tests
+## Shared code and tests
 
-Ce build compile uniquement trois sources neutres de `common/` :
-`Constants`, `CommonClass` et `PlatformContext`, dans le package défini par
-`group`.
-Il ne charge pas le build `common/`, NeoForm ou les ressources de mixins.
-Les autres classes de `common/` peuvent utiliser Minecraft vanilla.
+This build compiles only three engine-independent sources from `common/`:
+`Constants`, `CommonClass` and `PlatformContext`, in the package configured by `group`.
+It does not load the `common/` build, NeoForm or mixin resources. Other
+classes in `common/` may use vanilla Minecraft.
 
-En mode template, la CI contrôle la configuration et un projet de test isolé
-compile ces trois classes sans moteur Minestom. En mode projet, le test
-JUnit démarre le vrai serveur sur un port local éphémère : contexte,
-génération d’un chunk, réponse de statut Minecraft, ping/pong et arrêt.
-Le serveur est fermé même si une assertion échoue.
+In template mode, CI checks the configuration and an isolated test project
+compiles these three classes without the Minestom engine. In project mode,
+the JUnit test starts the real server on an ephemeral local port: context,
+chunk generation, Minecraft status, ping/pong and shutdown. The server is
+closed even when an assertion fails.
 
-Voir [la validation](validation.md), [le développement](developpement.md)
-et [les consignes](AGENTS.fr.md). Retour à [l’accueil](README.fr.md).
+See [validation](validation.md), [development](developpement.md)
+and the [contribution instructions](../AGENTS.md). Back to the [overview](../README.md).

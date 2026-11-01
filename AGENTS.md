@@ -25,7 +25,7 @@ root-level `src/`, `resources/` or `tests/` directories.
 Keep root `settings.gradle`, `build.gradle` and `gradle.properties`. Centralize
 versions, JDKs, modules and development settings in `gradle.properties`; keep
 `buildSrc/`'s own tooling build. Preserve generated-resource paths. Update both
-language versions of [the layout guide](docs/organisation.en.md) when paths change.
+language versions of [the layout guide](docs/organisation.md) when paths change.
 
 `common/` is required. Optional target directories are excluded automatically
 when absent. `modules`, `required_modules` and `standalone_modules` drive Gradle
@@ -47,10 +47,12 @@ Gradle `run` reads `minestom_development`.
 Configure Java versions explicitly. Distinguish Gradle's runtime JVM from
 compiler toolchains; do not infer Java versions from metadata or bytecode.
 
-Keep `README.md` and `AGENTS.md` as English entry points at the root. Store their
-French versions in `docs/`; other guides remain in `docs/` with English/French
-counterparts and reciprocal language links. Keep technical changes synchronized
-between translations. Configuration and license files stay where tools expect them.
+English is the default documentation language. Keep `README.md` and `AGENTS.md`
+as English entry points at the root; English guides in `docs/` use `.md` without
+a language suffix. Only French translations use `.fr.md`, including
+`docs/README.fr.md` and `docs/AGENTS.fr.md`.
+Keep reciprocal language links and synchronize technical changes between
+translations. Configuration and license files stay where tools expect them.
 
 Keep build outputs in `build/`. Ignore `.gradle/`, `run/`, `runs/` and temporary
 files. Never commit secrets. Preserve the user's existing changes.
@@ -63,6 +65,8 @@ delivery. Use descriptive branch names with `feat/`, `fix/`, `refactor/`, `docs/
 
 Write focused commits as `type(scope): subject`, with an optional scope and the
 same types as branches. **Commit subjects and bodies must be in English only.**
+When translating historical commit messages, preserve author and committer
+timestamps, including their timezone offsets.
 Separate independent changes and retain thematic commits during merges unless
 asked otherwise.
 
@@ -113,7 +117,7 @@ tests or CI. `0.y.z` remains unstable; feature counts do not imply `1.0.0`.
 Centralize the product version in `gradle.properties`. Never reuse a distributed
 artifact version for different content. Select a published Minestom version for
 the exact `minecraft_version`, not the latest global release or a dynamic selector.
-See [versioning](docs/versionnement.en.md).
+See [versioning](docs/versionnement.md).
 
 Prereleases are allowed on work branches. On `main`, the product version must be
 exactly `MAJOR.MINOR.PATCH`: three integers without leading zeros, prefixes,

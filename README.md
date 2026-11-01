@@ -34,8 +34,8 @@ Fabric, Forge and NeoForge import `common/` directly. All four targets call
 mod lookup callback. Minestom compiles the same three engine-independent
 classes: `Constants`, `CommonClass` and `PlatformContext`.
 
-See [development and shared code](docs/developpement.en.md) and
-[Minestom startup options](docs/minestom.en.md).
+See [development and shared code](docs/developpement.md) and
+[Minestom startup options](docs/minestom.md).
 
 ## Validate changes
 
@@ -51,15 +51,15 @@ values `auto`, `template` and `project`. It reports compiled, absent and
 unselected modules before builds. Version checks use official publication
 metadata without downloading dependency binaries.
 
-See [CI checks and limits](docs/validation.en.md). Dependency update tasks
+See [CI checks and limits](docs/validation.md). Dependency update tasks
 `checkModUpdates` and `updateModVersions` keep Minecraft fixed;
-[update options](docs/mises-a-jour.en.md) describe manual and automatic use.
+[update options](docs/mises-a-jour.md) describe manual and automatic use.
 
 ## Reference
 
-- [Configuration and pinned versions](docs/configuration.en.md)
-- [Repository layout](docs/organisation.en.md)
-- [Versioning](docs/versionnement.en.md)
+- [Configuration and pinned versions](docs/configuration.md)
+- [Repository layout](docs/organisation.md)
+- [Versioning](docs/versionnement.md)
 - [Contribution instructions](AGENTS.md)
 
 Based on [MultiLoader-Template](https://github.com/jaredlll08/MultiLoader-Template)

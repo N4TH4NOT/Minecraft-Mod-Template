@@ -1,107 +1,102 @@
-[English](validation.en.md) | **Français**
+**English** | [Français](validation.fr.md)
 
 # Validation
 
-Toutes les compilations et tous les tests automatisés s’exécutent dans
-**GitHub Actions**, selon les [consignes du dépôt](AGENTS.fr.md).
+Run all builds and automated tests in **GitHub Actions**, as required by the
+[repository instructions](../AGENTS.md).
 
-## Choisir le parcours CI
+## Choose the CI path
 
-Dans GitHub, ouvrir **Actions → Validate template or build project → Run workflow**.
-Sélectionner la branche et la valeur de `repository_type` :
+In GitHub, open **Actions → Validate template or build project → Run workflow**.
+Select the branch and set `repository_type`:
 
-| Mode | Usage |
+| Mode | Purpose |
 | --- | --- |
-| `auto` | Utilise le champ GitHub `repository.is_template`. Un dépôt créé avec « Use this template » suit normalement le parcours projet. |
-| `template` | Valide le modèle, même sans sources Java applicatives. |
-| `project` | Compile et teste les cibles présentes. Permet aussi de vérifier les exemples du modèle sans changer le statut GitHub du dépôt. |
+| `auto` | Uses GitHub’s `repository.is_template` field. A repository created through “Use this template” normally follows the project path. |
+| `template` | Validates the scaffold, including when application Java sources are absent. |
+| `project` | Builds and tests the targets that are present. Also checks the template examples without changing the repository’s GitHub template status. |
 
-Vérifier le **mode** et le **SHA du commit** dans les résultats. Une CI template
-réussie ne valide pas les applications du parcours projet.
+Check the **mode** and **commit SHA** in the results. A successful template run
+does not validate the applications covered by the project path.
 
-## Vérifier le périmètre avant la compilation
+## Check the scope before compilation
 
-Gradle et la CI lisent `modules`, `required_modules` et `standalone_modules`
-dans `gradle.properties`. `common/` est obligatoire ; supprimer un dossier
-cible, par exemple `forge/`, suffit à l’exclure. Garder au moins une cible
-applicative. Minestom conserve son build et son wrapper autonomes.
+Gradle and CI read `modules`, `required_modules` and `standalone_modules` from
+`gradle.properties`. `common/` is required; removing a target directory, such as
+`forge/`, excludes it. Retain at least one application target. Minestom keeps
+its standalone build and wrapper.
 
-Les logs et la synthèse CI distinguent les dossiers absents, les cibles
-présentes et les compilations prévues. Gradle affiche aussi `reportBuildPlan`
-avant ses autres tâches, y compris après réutilisation du cache de configuration.
-Une tâche planifiée peut ensuite être évitée si ses sorties sont à jour ou
-récupérées depuis le cache.
+Logs and the CI summary distinguish absent directories, present targets and
+planned compilations. Gradle also runs `reportBuildPlan` before its other tasks,
+including when the configuration cache is reused. A planned task may later be
+avoided because its outputs are up to date or restored from the build cache.
 
-Un dossier cible présent, vide ou contenant seulement `.gitkeep`, est initialisé depuis les presets.
-La CI projet lance ce bootstrap avant la construction ; la validation du modèle
-vérifie les presets sans modifier les dossiers applicatifs.
+An existing target directory that is empty or contains only `.gitkeep` is initialized from the presets.
+Project CI runs this bootstrap before building; template validation checks the
+presets without modifying application directories.
 
-## Contrôles du modèle
+## Template checks
 
-Le parcours template contrôle les propriétés, scripts centraux, presets,
-ressources et wrappers. Les placeholders sont attendus ; aucune suite
-applicative ni aucun code Java applicatif n’est exigé.
+The template path checks properties, central build scripts, presets, resources
+and wrappers. Resource placeholders are expected; application test suites and
+application Java code are optional.
 
-Les contrôles de l’outillage s’exécutent aussi en CI :
+CI also checks the supporting tooling:
 
-- Les tests Python couvrent les décisions de CI et le refus des rapports de projet absents ou vides.
-- Les fixtures Gradle vérifient l’initialisation, la préservation des fichiers, l’idempotence et le bilan avec cache de configuration.
-- Une fixture compile les classes communes générées et teste le contrat `PlatformContext`, sans résoudre ni démarrer Minecraft ou un modloader.
-- Une fixture Minestom compile les trois classes Java neutres sélectionnées depuis `common/`, sans charger son projet NeoForm, ses ressources de mixins ou le moteur Minestom.
+- Python tests cover CI decisions and reject missing or empty project test reports.
+- Gradle fixtures check initialization, file preservation, idempotence and scope reporting with the configuration cache.
+- One fixture compiles the generated common classes and tests the `PlatformContext` contract without resolving or starting Minecraft or a modloader.
+- A Minestom fixture compiles the three selected neutral Java classes from `common/` without loading its NeoForm project, mixin resources or the Minestom engine.
 
-Ces fixtures vérifient le modèle et l’API partagée. Elles ne remplacent pas
-la compilation complète ni les tests des applications.
+These fixtures check the scaffold and shared API. They do not replace full
+application builds or tests.
 
-La synthèse du job **Test Gradle scaffolding and generated shared context**
-affiche un statut par fixture : `✅ Passed`, `❌ Failed` / `Error`, `⚠️ Skipped`.
-L’artefact `scaffold-integration` conserve les logs et le rapport JSON avec
-les traces d’exception.
+The **Test Gradle scaffolding and generated shared context** job summary lists
+each fixture as `✅ Passed`, `❌ Failed` / `Error` or `⏩ Skipped`.
+The `scaffold-integration` artifact retains logs and a JSON report with exception
+tracebacks.
 
-## Vérification des versions publiées
+## Published version checks
 
-Le job **Verify configured versions in official repositories** précède la
-validation du modèle et les constructions applicatives. Il lit les versions
-fixes de `gradle.properties` pour les cibles déclarées et présentes, y compris
-les dossiers vides à initialiser. Les cibles absentes sont exclues.
+**Verify configured versions in official repositories** runs before template
+validation and application builds. It reads fixed versions from
+`gradle.properties` for declared targets that are present, including empty
+directories awaiting initialization. Absent targets are excluded.
 
-Il consulte uniquement les métadonnées textuelles officielles : POM Maven,
-POM marqueurs des plugins, manifeste JSON des versions Minecraft, et sommes
-SHA-256 des distributions Gradle. **Ce contrôle ne télécharge aucun JAR, ZIP
-ou autre binaire, même partiellement.** Il ne résout pas les dépendances
-transitives et ne choisit aucune version ou installation Java.
+The check reads official text metadata only: Maven POMs, plugin marker POMs,
+Minecraft’s version manifest JSON, and Gradle distribution SHA-256 values.
+**It downloads no JAR, ZIP or other binary, including partial downloads.**
+It does not resolve transitive dependencies or select versions or Java installations.
 
-La version du futur produit et les paramètres Java ou formats Minecraft sont
-traités séparément des versions de dépendances publiées. Une propriété de
-version sans règle de vérification, un sélecteur dynamique ou un SNAPSHOT
-mutable ne reçoit pas d’approbation silencieuse.
+The future product version, Java settings and Minecraft format numbers are
+handled separately from published dependency versions. An unknown version
+property, dynamic selector or mutable SNAPSHOT cannot be silently approved.
 
-Une version introuvable ou des métadonnées invalides font échouer le contrôle.
-Un problème réseau signifie « non vérifié », jamais « version absente » ou
-« validé » ; il bloque aussi l’approbation. Les reprises réseau sont limitées,
-sans réutilisation d’une ancienne validation sur disque.
+A missing version or invalid metadata fails the check. A network problem means
+“unverified,” never “version missing” or “validated,” and also blocks approval.
+Network retries are bounded; previous verification results are not reused from disk.
 
-L’artefact **published-versions** conserve le rapport JSON, les URLs consultées,
-les exclusions et les motifs d’échec. Ses tests utilisent des réponses simulées ;
-le job consulte les dépôts réels. Une publication existante ne prouve pas à elle
-seule la compatibilité du code applicatif.
+The **published-versions** artifact retains the JSON report, requested URLs,
+exclusions and failure reasons. Unit tests use simulated responses; the job
+queries real repositories. A published version alone does not prove application
+API compatibility.
 
-## Contrôles d’un projet
+## Project checks
 
-La CI installe les JDK déclarés pour le runtime Gradle, `buildSrc` et les
-toolchains. La détection et le téléchargement implicites des toolchains sont
-désactivés. Les wrappers sont comparés aux versions et SHA-256 configurés.
+CI installs the declared JDKs for the Gradle runtime, `buildSrc` and compiler
+toolchains. Implicit toolchain detection and downloads are disabled. Wrapper
+versions and SHA-256 values must match the configuration.
 
-| Cible | Contrôles |
+| Target | Checks |
 | --- | --- |
-| Fabric, Forge, NeoForge | Compilation, tests de `common/` et du loader, ressources traitées, points d’entrée et artefacts. Les tests ne démarrent pas Minecraft. |
-| Minestom | Build autonome, contexte transmis au code partagé, démarrage et arrêt réels du serveur, génération du monde, protocole réseau et distribution. |
+| Fabric, Forge, NeoForge | Compilation, `common/` and loader tests, processed resources, entrypoints and artifacts. These tests do not start Minecraft. |
+| Minestom | Standalone build, context passed to shared code, real server startup and shutdown, world generation, network protocol and distribution. |
 
-Après initialisation, le projet doit contenir du code à compiler. Chaque suite
-applicative attendue doit produire des rapports avec **au moins un test exécuté**,
-hors tests ignorés. Une suite vide ne valide rien. Les échecs restent visibles ;
-les rapports sont conservés même en cas d’échec et les artefacts sont requis après
-une construction réussie.
+After initialization, a project must contain code to compile. Every expected
+application suite must produce reports with **at least one executed test**,
+excluding skipped tests. An empty suite proves nothing. Failures remain visible;
+reports are retained on failure, and artifacts are required after a successful build.
 
-L’option manuelle `update_mod_versions` ne concerne que les builds de mods en
-mode `project`. Voir les [mises à jour](mises-a-jour.md) et la
-[configuration](configuration.md). Retour au [README](README.fr.md).
+The manual `update_mod_versions` option applies only to mod builds in `project`
+mode. See [dependency updates](mises-a-jour.md) and
+[configuration](configuration.md). Return to the [README](../README.md).
