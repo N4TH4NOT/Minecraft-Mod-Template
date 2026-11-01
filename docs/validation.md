@@ -81,6 +81,10 @@ exclusions and failure reasons. Unit tests use simulated responses; the job
 queries real repositories. A published version alone does not prove application
 API compatibility.
 
+The summary uses one table per module and a **Shared dependencies** table for
+versions used by multiple active modules. Build tooling and configuration have
+separate tables. Each property appears once, with its scope and status.
+
 ## Project checks
 
 CI installs the declared JDKs for the Gradle runtime, `buildSrc` and compiler

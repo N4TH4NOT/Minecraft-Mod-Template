@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from validate_published_versions import (
     CENTRAL, FABRIC, MOJANG, PORTAL, Remote, Response, VerificationError,
-    fixed_version, maven_url, published_minecraft, published_pom, verify_config,
+    fixed_version, markdown_summary, maven_url, published_minecraft, published_pom, verify_config,
 )
 
 
@@ -263,6 +263,51 @@ class PublicationCatalogTest(unittest.TestCase):
         self.assertEqual("checked", pin["status"])
         self.assertIn(api, reader.calls)
         self.assertIn(provider, reader.calls)
+
+    def test_scopes_use_actual_consumers_and_distinguish_common_from_shared(self):
+        config, reader = self.baseline()
+        report = verify_config(config, {"common", "fabric", "minestom", "buildsrc"}, reader, pause=lambda _: None)
+        pins = {pin["property"]: pin for pin in report["pins"]}
+        self.assertEqual(["common", "forge"], pins["mixin_version"]["scope"])
+        self.assertEqual(["common"], pins["mixin_version"]["active_scope"])
+        self.assertEqual("Common", pins["mixin_version"]["summary_group"])
+        self.assertEqual("Shared dependencies", pins["gson_version"]["summary_group"])
+        self.assertEqual(["common", "fabric"], pins["gson_version"]["active_scope"])
+        self.assertEqual("Minestom", pins["minestom_version"]["summary_group"])
+        self.assertEqual("Build tooling", pins["foojay_resolver_version"]["summary_group"])
+        self.assertEqual("Configuration", pins["version"]["summary_group"])
+
+    def test_summary_keeps_each_pin_once_in_its_own_table_even_when_missing_or_unused(self):
+        config, reader = self.baseline()
+        report = verify_config(config, {"common", "fabric", "minestom"}, reader, pause=lambda _: None)
+        summary = markdown_summary(report)
+        sections = {part.split("\n", 1)[0]: part for part in summary.split("#### ")[1:]}
+        for pin in report["pins"]:
+            self.assertEqual(1, summary.count("| " + pin["property"] + " |"), pin["property"])
+        self.assertIn("| minestom_version |", sections["Minestom"])
+        self.assertIn("❌ Failed", sections["Minestom"])
+        self.assertNotIn("| minestom_version |", sections["Shared dependencies"])
+        self.assertIn("| forge_version |", sections["Forge"])
+        self.assertIn("⏩ Skipped", sections["Forge"])
+        self.assertIn("Forge (inactive)", sections["Forge"])
+        self.assertIn("| new_library_version |", markdown_summary(
+            verify_config({**config, "new_library_version": "1.0.0"}, set(), reader, pause=lambda _: None)))
+
+    def test_java_gradle_and_range_scopes_describe_their_owners(self):
+        config, reader = self.baseline()
+        config.update(common_java_version="21", minestom_java_version="25", minestom_gradle_java_version="25",
+                      buildsrc_java_version="21")
+        report = verify_config(config, {"common", "minestom", "buildsrc"}, reader, pause=lambda _: None)
+        pins = {pin["property"]: pin for pin in report["pins"]}
+        self.assertEqual(["common"], pins["common_java_version"]["scope"])
+        self.assertEqual(["minestom"], pins["minestom_gradle_java_version"]["scope"])
+        self.assertEqual(["buildsrc"], pins["buildsrc_java_version"]["scope"])
+        self.assertEqual(["root"], pins["gradle_java_version"]["scope"])
+        self.assertEqual("Build tooling", pins["minestom_gradle_java_version"]["summary_group"])
+        self.assertEqual([], pins["java_version"]["active_scope"])
+        self.assertEqual(["forge"], pins["forge_loader_version_range"]["scope"])
+        self.assertEqual(["forge", "neoforge"], pins["minecraft_version_range"]["scope"])
+        self.assertNotIn("minestom", pins["minecraft_pack_version"]["scope"])
 
 
 if __name__ == "__main__":

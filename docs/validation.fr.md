@@ -85,6 +85,11 @@ les exclusions et les motifs d’échec. Ses tests utilisent des réponses simul
 le job consulte les dépôts réels. Une publication existante ne prouve pas à elle
 seule la compatibilité du code applicatif.
 
+La synthèse utilise un tableau par module et un tableau **Shared dependencies**
+pour les versions partagées par plusieurs modules actifs. L’outillage et la
+configuration ont leurs propres tableaux. Chaque propriété apparaît une seule
+fois, avec son périmètre et son statut.
+
 ## Contrôles d’un projet
 
 La CI installe les JDK déclarés pour le runtime Gradle, `buildSrc` et les

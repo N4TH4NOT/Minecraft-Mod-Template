@@ -197,6 +197,50 @@ MAVEN_PINS = {
 PARAMETERS = {"minecraft_data_version", "minecraft_pack_version", "minecraft_version_range",
               "forge_loader_version_range", "neoforge_loader_version_range"}
 DISTRIBUTIONS = {"gradle_version", "gradle_distribution_sha256", "minestom_gradle_version", "minestom_gradle_distribution_sha256"}
+MODULE_SCOPES = {"common", "fabric", "forge", "neoforge", "minestom"}
+PARAMETER_SCOPES = {
+    "minecraft_data_version": MODULE_SCOPES - {"minestom"},
+    "minecraft_pack_version": MODULE_SCOPES - {"minestom"},
+    "minecraft_version_range": {"forge", "neoforge"},
+    "forge_loader_version_range": {"forge"},
+    "neoforge_loader_version_range": {"neoforge"},
+}
+SCOPE_LABELS = {"common": "Common", "fabric": "Fabric", "forge": "Forge", "neoforge": "NeoForge",
+                "minestom": "Minestom", "buildsrc": "buildSrc", "root": "Root build",
+                "configuration": "Project configuration"}
+
+
+def presentation_scope(key, config, active):
+    """Describe consumers without changing publication checks or their scopes."""
+    group = None
+    if key in PLUGIN_PINS:
+        scope = set(PLUGIN_PINS[key][2])
+    elif key in MAVEN_PINS:
+        scope = set(MAVEN_PINS[key][3])
+    elif key == "minecraft_version":
+        scope = set(MODULE_SCOPES)
+    elif key == "parchment_minecraft":
+        scope = set(MAVEN_PINS["parchment_version"][3])
+    elif key in DISTRIBUTIONS or key.endswith("java_version") and key != "java_version":
+        group = "Build tooling"
+        owner = key.removesuffix("_gradle_java_version").removesuffix("_java_version")
+        scope = {"minestom" if key.startswith("minestom_") else "root" if key in DISTRIBUTIONS or key == "gradle_java_version" else owner}
+    elif key == "java_version":
+        group, scope = "Configuration", (MODULE_SCOPES - {"minestom"}) | {"buildsrc"}
+    else:
+        group, scope = "Configuration", set(PARAMETER_SCOPES.get(key, {"configuration"}))
+    used = scope & (set(active) | {"configuration"})
+    if key == "java_version":
+        used = {owner for owner in used if not config.get(owner + "_java_version")}
+    consumers = used or scope
+    if group is None:
+        if consumers <= {"root", "buildsrc"}:
+            group = "Build tooling"
+        elif len(consumers) == 1:
+            group = SCOPE_LABELS[next(iter(consumers))]
+        else:
+            group = "Shared dependencies"
+    return {"scope": sorted(scope), "active_scope": sorted(used), "summary_group": group}
 
 
 def verify_config(config, active, reader=None, **remote_options):
@@ -209,6 +253,7 @@ def verify_config(config, active, reader=None, **remote_options):
     for key in keys:
         sources = ["gradle.properties"]
         entry = {"property": key, "value": config.get(key), "status": "checked", "kind": "publication", "sources": sources}
+        entry.update(presentation_scope(key, config, active))
         try:
             scope = PLUGIN_PINS[key][2] if key in PLUGIN_PINS else MAVEN_PINS[key][3] if key in MAVEN_PINS else None
             if key.startswith("minestom_"):
@@ -265,13 +310,24 @@ def verify_config(config, active, reader=None, **remote_options):
 def markdown_summary(report):
     statuses = {"checked": "✅ Checked", "failed": "❌ Failed",
                 "unverified": "⚠️ Unverified", "skipped": "⏩ Skipped"}
-    lines = ["### Published version metadata", "", f"Result: **{report['result']}**", "",
-             "| Property | Value | Status | Detail |", "| --- | --- | --- | --- |"]
-    for entry in report["pins"]:
-        escape = lambda value: str(value).replace("|", "\\|").replace("\n", " ")
-        values = [entry.get("property", ""), entry.get("value", ""),
-                  statuses.get(entry.get("status"), entry.get("status", "")), entry.get("detail", "")]
-        lines.append("| " + " | ".join(escape(value) for value in values) + " |")
+    lines = ["### Published version metadata", "", f"Result: **{report['result']}**", ""]
+    groups = ("Shared dependencies", "Common", "Fabric", "Forge", "NeoForge", "Minestom", "Build tooling", "Configuration")
+    for group in groups:
+        entries = [entry for entry in report["pins"] if entry.get("summary_group", "Configuration") == group]
+        if not entries:
+            continue
+        lines.extend([f"#### {group}", "", "| Property | Value | Used by | Status | Detail |",
+                      "| --- | --- | --- | --- | --- |"])
+        for entry in entries:
+            escape = lambda value: str(value).replace("|", "\\|").replace("\n", " ")
+            scope = entry.get("active_scope") or entry.get("scope", [])
+            consumers = ", ".join(SCOPE_LABELS.get(owner, owner) for owner in scope)
+            if scope and not entry.get("active_scope"):
+                consumers += " (inactive)"
+            values = [entry.get("property", ""), entry.get("value", ""), consumers,
+                      statuses.get(entry.get("status"), entry.get("status", "")), entry.get("detail", "")]
+            lines.append("| " + " | ".join(escape(value) for value in values) + " |")
+        lines.append("")
     if report.get("error"):
         lines.extend(["", "Configuration error: " + str(report["error"]).replace("\n", " ")])
     lines.extend(["", "Metadata only; no dependency download or compatibility claim.", ""])
