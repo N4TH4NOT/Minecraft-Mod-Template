@@ -20,7 +20,8 @@ class FabricMetadataTest {
     @Test
     void generatedMetadataPointsToUsableMainEntrypoints() throws Exception {
         JsonObject metadata = JsonParser.parseString(resource("fabric.mod.json")).getAsJsonObject();
-        assertEquals("1.21.10", metadata.getAsJsonObject("depends").get("minecraft").getAsString());
+        assertEquals(System.getProperty("template.minecraft.version"),
+                metadata.getAsJsonObject("depends").get("minecraft").getAsString());
 
         var entrypoints = metadata.getAsJsonObject("entrypoints").getAsJsonArray("main");
         assertFalse(entrypoints.isEmpty(), "A main entrypoint is required");
@@ -48,7 +49,8 @@ class FabricMetadataTest {
         JsonObject metadata = JsonParser.parseString(resource("fabric.mod.json")).getAsJsonObject();
         for (JsonElement name : metadata.getAsJsonArray("mixins")) {
             JsonObject mixins = JsonParser.parseString(resource(name.getAsString())).getAsJsonObject();
-            assertEquals("JAVA_21", mixins.get("compatibilityLevel").getAsString());
+            assertEquals("JAVA_" + System.getProperty("template.java.version"),
+                    mixins.get("compatibilityLevel").getAsString());
             for (String side : new String[]{"mixins", "client", "server"}) {
                 for (JsonElement mixin : mixins.getAsJsonArray(side)) {
                     String className = mixins.get("package").getAsString() + "." + mixin.getAsString();

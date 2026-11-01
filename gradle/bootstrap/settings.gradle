@@ -1,0 +1,2 @@
+rootProject.name = 'template-bootstrap'
+apply from: file('../scaffold.gradle')

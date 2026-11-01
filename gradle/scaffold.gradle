@@ -1,0 +1,183 @@
+import groovy.json.JsonOutput
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
+
+// Applied to Settings: a missing optional target remains absent. Only existing
+// empty directories (or directories containing .gitkeep alone) are initialized.
+def templateDirectory = settingsDir
+while (templateDirectory != null && !(new File(templateDirectory, 'gradle.properties').isFile()
+        && new File(templateDirectory, 'gradle/scaffold.gradle').isFile())) {
+    templateDirectory = templateDirectory.parentFile
+}
+if (templateDirectory == null) {
+    throw new GradleException('Cannot locate gradle.properties and gradle/scaffold.gradle')
+}
+
+def configuration = new Properties()
+new File(templateDirectory, 'gradle.properties').withReader('UTF-8') { configuration.load(it) }
+def propertyValue = { String name, String fallback = null ->
+    def value = providers.gradleProperty(name).orElse(configuration.getProperty(name, fallback ?: '')).get()
+    if (value.isBlank() && fallback == null) {
+        throw new GradleException("Missing scaffold property: ${name}")
+    }
+    value
+}
+def csv = { String name ->
+    propertyValue(name).split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+}
+def modules = csv('modules')
+def required = csv('required_modules')
+if (!modules.contains('common') || !required.contains('common')) {
+    throw new GradleException('common must be declared in modules and required_modules')
+}
+if (modules.size() != modules.unique(false).size()) {
+    throw new GradleException('The modules property contains duplicate module paths')
+}
+modules.each { module ->
+    if (!(module ==~ /[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*/)) {
+        throw new GradleException("Invalid scaffold module path: ${module}")
+    }
+}
+required.each { module ->
+    if (!(module in modules) || !new File(templateDirectory, module).isDirectory()) {
+        throw new GradleException("Required module ${module}/ must be declared and present")
+    }
+}
+
+def packageName = propertyValue('group')
+def modId = propertyValue('mod_id')
+def mainClass = propertyValue('minestom_main_class', "${packageName}.minestom.MinestomServer")
+def qualifiedJavaName = /[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*/
+if (!(packageName ==~ qualifiedJavaName) || !(mainClass ==~ qualifiedJavaName)
+        || !mainClass.contains('.')) {
+    throw new GradleException('group and minestom_main_class must be valid qualified Java names')
+}
+if (!(modId ==~ /[a-z][a-z0-9_]*/)) {
+    throw new GradleException('mod_id must start with a lowercase letter and contain lowercase letters, digits or underscores')
+}
+def mainPackage = mainClass.substring(0, mainClass.lastIndexOf('.'))
+def simpleMainClass = mainClass.substring(mainClass.lastIndexOf('.') + 1)
+def tokens = [
+        '__PACKAGE__': packageName,
+        '__PACKAGE_PATH__': packageName.replace('.', '/'),
+        '__MOD_ID__': modId,
+        '__MOD_ID_LITERAL__': JsonOutput.toJson(modId),
+        '__MOD_NAME_LITERAL__': JsonOutput.toJson(propertyValue('mod_name')),
+        '__MAIN_PACKAGE__': mainPackage,
+        '__MAIN_PACKAGE_PATH__': mainPackage.replace('.', '/'),
+        '__MAIN_CLASS__': simpleMainClass,
+        '__MIN_GRADLE_VERSION__': propertyValue('minestom_gradle_version', ''),
+        '__MIN_GRADLE_SHA256__': propertyValue('minestom_gradle_distribution_sha256', ''),
+]
+def render = { String text ->
+    def matcher = text =~ /__[A-Z][A-Z0-9_]*__/
+    def rendered = new StringBuffer()
+    while (matcher.find()) {
+        def token = matcher.group()
+        if (!tokens.containsKey(token)) {
+            throw new GradleException("Unknown scaffold token: ${token}")
+        }
+        matcher.appendReplacement(rendered, java.util.regex.Matcher.quoteReplacement(tokens[token]))
+    }
+    matcher.appendTail(rendered)
+    rendered.toString()
+}
+def isEmptyModule = { File directory ->
+    directory.isDirectory() && directory.listFiles().every { it.isFile() && it.name == '.gitkeep' }
+}
+
+// Plan and render every file before creating anything. A present nonempty
+// module belongs to the developer and must remain untouched.
+def plannedModules = []
+def plannedFiles = []
+modules.each { module ->
+    def destination = new File(templateDirectory, module)
+    if (isEmptyModule(destination)) {
+        if (!destination.canonicalFile.toPath().startsWith(templateDirectory.canonicalFile.toPath())) {
+            throw new GradleException("Scaffold destination is outside the template: ${module}")
+        }
+        def preset = new File(templateDirectory, "gradle/templates/${module}")
+        if (!preset.isDirectory() || Files.isSymbolicLink(preset.toPath())) {
+            throw new GradleException("No scaffold preset is available for empty module ${module}")
+        }
+        if (module == 'minestom' && (!(tokens['__MIN_GRADLE_VERSION__'] ==~ /\d+(?:\.\d+)+/)
+                || !(tokens['__MIN_GRADLE_SHA256__'] ==~ /[a-fA-F0-9]{64}/))) {
+            throw new GradleException('The Minestom wrapper preset requires its central Gradle version and SHA-256 checksum')
+        }
+        def sourceFiles = []
+        preset.eachFileRecurse { source ->
+            if (Files.isSymbolicLink(source.toPath())) {
+                throw new GradleException("A scaffold preset must not contain symbolic links: ${source}")
+            }
+            if (source.isFile()) sourceFiles.add(source)
+        }
+        if (sourceFiles.isEmpty()) {
+            throw new GradleException("Scaffold preset is empty for module ${module}")
+        }
+        sourceFiles.sort { preset.toPath().relativize(it.toPath()).toString() }.each { source ->
+            def relative = render(preset.toPath().relativize(source.toPath()).toString().replace(File.separator, '/'))
+            def target = new File(destination, relative)
+            if (!target.toPath().normalize().startsWith(destination.toPath().normalize())) {
+                throw new GradleException("Scaffold file escapes its module: ${relative}")
+            }
+            if (Files.exists(target.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                throw new GradleException("Scaffold refuses to replace existing file: ${target}")
+            }
+            def renderText = (source.name in ['gradlew', '.gitkeep']
+                    || source.name ==~ /.*\.(?:java|json|toml|mcmeta|gradle|properties|xml|txt|cfg|accesswidener|md|bat|ya?ml)/
+                    || relative.contains('/META-INF/services/'))
+            byte[] contents = (renderText
+                    ? render(source.getText('UTF-8')).getBytes(StandardCharsets.UTF_8) : source.bytes)
+            plannedFiles.add([module: module, relative: relative, destination: target, bytes: contents])
+        }
+        plannedModules.add(module)
+    }
+}
+
+if (!plannedModules.isEmpty()) {
+    logger.lifecycle('Modules vides à initialiser : {}', plannedModules.join(', '))
+    plannedFiles.each { entry -> logger.lifecycle('  Création : {}/{}', entry.module, entry.relative) }
+    // Recheck all destinations after the plan has been shown; CREATE_NEW also
+    // protects a file created concurrently after this check.
+    plannedModules.each { module ->
+        if (!isEmptyModule(new File(templateDirectory, module))) {
+            throw new GradleException("Module ${module} changed during scaffold preparation; no files were written")
+        }
+    }
+    def written = []
+    try {
+        plannedFiles.each { entry ->
+            Files.createDirectories(entry.destination.toPath().parent)
+            def output = Files.newOutputStream(entry.destination.toPath(), StandardOpenOption.CREATE_NEW)
+            written.add(entry.destination.toPath())
+            output.withCloseable { it.write(entry.bytes as byte[]) }
+            if (entry.relative == 'gradlew' && File.separator == '/'
+                    && !entry.destination.setExecutable(true, false)) {
+                throw new GradleException("Cannot make the generated wrapper executable: ${entry.destination}")
+            }
+        }
+    } catch (Exception failure) {
+        // Remove only files created by this invocation. Existing .gitkeep files
+        // and concurrently created files remain owned by the developer.
+        written.reverseEach { created ->
+            try {
+                Files.deleteIfExists(created)
+            } catch (Exception cleanupFailure) {
+                failure.addSuppressed(cleanupFailure)
+            }
+        }
+        plannedModules.each { module ->
+            def directory = new File(templateDirectory, module)
+            def generatedDirectories = []
+            directory.eachDirRecurse { generatedDirectories.add(it) }
+            generatedDirectories.sort { -it.toPath().nameCount }.each { generated ->
+                if (generated.listFiles().length == 0) generated.delete()
+            }
+        }
+        throw failure
+    }
+}
+ext.initializedModules = plannedModules.asImmutable()
+ext.scaffoldTemplateDirectory = templateDirectory

@@ -22,16 +22,11 @@ abstract class PrintBuildPlan extends DefaultTask {
     }
 }
 
-// The standalone Minestom build reads the same manifest from its parent.
-def standalone = !rootProject.file('gradle/modules.txt').isFile()
-def templateDirectory = standalone ? rootProject.projectDir.parentFile : rootProject.projectDir
-def manifest = new File(templateDirectory, 'gradle/modules.txt')
-if (!manifest.isFile() || !new File(templateDirectory, 'common/build.gradle').isFile()) {
-    throw new GradleException('The template requires gradle/modules.txt and common/build.gradle')
-}
-def candidates = manifest.readLines('UTF-8').collect { it.split('#', 2)[0].trim() }.findAll { !it.isEmpty() } + ['minestom']
-if (!candidates.contains('common')) {
-    throw new GradleException('The required common module must be declared in gradle/modules.txt')
+def templateDirectory = templateRootDirectory
+def standalone = rootProject.projectDir != templateDirectory
+def candidates = templateProperty('modules').split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+if (!candidates.contains('common') || !new File(templateDirectory, 'common').isDirectory()) {
+    throw new GradleException('The required common module must be configured and present')
 }
 def available = candidates.findAll { new File(templateDirectory, it).isDirectory() }
 def absent = candidates.findAll { !new File(templateDirectory, it).exists() }

@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 1,
+    "id": "${mod_id}",
+    "version": "${version}",
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": [
+        "${mod_author}"
+    ],
+    "contact": {
+        "homepage": "",
+        "sources": "https://github.com/N4TH4NOT/Minecraft-Mod-Template"
+    },
+    "license": "${license}",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+          "${group}.ModId"
+        ],
+        "modmenu": [
+          "${group}.client.ModMenuIntegration"
+        ]
+    },
+    "mixins": [
+        "${mod_id}.mixins.json",
+        "${mod_id}.fabric.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${fabric_loader_version}",
+        "fabric-api": ">=${fabric_version}",
+        "cloth-config": ">=${cloth_config_version}",
+        "minecraft": "${minecraft_version}",
+        "java": ">=${java_version}"
+    }
+}

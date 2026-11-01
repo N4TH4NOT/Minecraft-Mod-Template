@@ -32,7 +32,7 @@ class NeoForgeMetadataTest {
         var minecraft = IntStream.range(0, dependencies.size()).mapToObj(dependencies::getTable)
                 .filter(dependency -> "minecraft".equals(dependency.getString("modId")))
                 .findFirst().orElseThrow();
-        assertEquals("[1.21.10,1.21.11)", minecraft.getString("versionRange"));
+        assertEquals(System.getProperty("template.minecraft.version.range"), minecraft.getString("versionRange"));
         assertEquals("required", minecraft.getString("type"));
     }
 
@@ -46,7 +46,8 @@ class NeoForgeMetadataTest {
         for (int index = 0; index < configurations.size(); index++) {
             String name = configurations.getTable(index).getString("config");
             JsonObject mixins = JsonParser.parseString(resource(name)).getAsJsonObject();
-            assertEquals("JAVA_21", mixins.get("compatibilityLevel").getAsString());
+            assertEquals("JAVA_" + System.getProperty("template.java.version"),
+                    mixins.get("compatibilityLevel").getAsString());
             for (String side : new String[]{"mixins", "client", "server"}) {
                 for (JsonElement mixin : mixins.getAsJsonArray(side)) {
                     String className = mixins.get("package").getAsString() + "." + mixin.getAsString();

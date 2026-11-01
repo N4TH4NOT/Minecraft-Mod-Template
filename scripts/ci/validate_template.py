@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the reusable scaffold; Java sources are optional in a template."""
+"""Check reusable configuration; source code may be absent or initialized later."""
 
 import argparse
 import json
@@ -8,18 +8,7 @@ import re
 import tomllib
 import zipfile
 
-from plan import discover
-
-
-def properties(path):
-    result = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith(("#", "!")):
-            key, separator, value = line.partition("=")
-            if separator:
-                result[key.strip()] = value.strip()
-    return result
+from plan import discover, empty_module, language_version, module_java, properties
 
 
 def require(path):
@@ -27,20 +16,55 @@ def require(path):
         raise ValueError(f"Missing scaffold file: {path}")
 
 
-def validate_wrapper(directory):
+def version(value, key):
+    if not re.fullmatch(r"[1-9][0-9]*\.[0-9]+(?:\.[0-9]+)?", value or ""):
+        raise ValueError(f"{key} must be a stable Gradle version number.")
+    return tuple(int(part) for part in value.split("."))
+
+
+def validate_wrapper(directory, config, prefix="", preset=False):
     for name in ("gradlew", "gradlew.bat", "gradle/wrapper/gradle-wrapper.properties", "gradle/wrapper/gradle-wrapper.jar"):
         require(directory / name)
-    config = properties(directory / "gradle/wrapper/gradle-wrapper.properties")
-    url = config.get("distributionUrl", "").replace("\\:", ":")
-    distribution = re.fullmatch(r"https://services\.gradle\.org/distributions/gradle-(\d+(?:\.\d+)+)-(?:bin|all)\.zip", url)
-    if not distribution:
-        raise ValueError(f"Invalid Gradle distribution URL in {directory}")
-    if not re.fullmatch(r"[a-fA-F0-9]{64}", config.get("distributionSha256Sum", "")):
-        raise ValueError(f"A SHA-256 distribution checksum is required in {directory}")
+    wrapper = properties(directory / "gradle/wrapper/gradle-wrapper.properties")
+    if preset:
+        tokens = {"__MIN_GRADLE_VERSION__": config.get("minestom_gradle_version", ""),
+                  "__MIN_GRADLE_SHA256__": config.get("minestom_gradle_distribution_sha256", "")}
+        for key, value in wrapper.items():
+            for token, replacement in tokens.items():
+                value = value.replace(token, replacement)
+            wrapper[key] = value
+    expected_version = config.get(prefix + "gradle_version", "")
+    expected_checksum = config.get(prefix + "gradle_distribution_sha256", "")
+    declared_version = version(expected_version, prefix + "gradle_version")
+    expected_url = f"https://services.gradle.org/distributions/gradle-{expected_version}-bin.zip"
+    if wrapper.get("distributionUrl", "").replace("\\:", ":") != expected_url:
+        raise ValueError(f"Wrapper distribution in {directory} differs from central {prefix}gradle_version.")
+    if not re.fullmatch(r"[a-fA-F0-9]{64}", expected_checksum):
+        raise ValueError(f"Central {prefix}gradle_distribution_sha256 must be a SHA-256 checksum.")
+    if wrapper.get("distributionSha256Sum", "").lower() != expected_checksum.lower():
+        raise ValueError(f"Wrapper SHA-256 in {directory} differs from central {prefix}gradle_distribution_sha256.")
     with zipfile.ZipFile(directory / "gradle/wrapper/gradle-wrapper.jar") as archive:
         if "org/gradle/wrapper/GradleWrapperMain.class" not in archive.namelist():
             raise ValueError(f"Gradle wrapper main class is absent in {directory}")
-    return tuple(int(part) for part in distribution.group(1).split("."))
+    return declared_version
+
+
+def validate_java(gradle, java, runtime=False):
+    # Official Gradle Java compatibility: runtime and toolchain minimums differ.
+    runtime_minimums = {8: (2, 0), 9: (4, 3), 10: (4, 7), 11: (5, 0), 12: (5, 4),
+                        13: (6, 0), 14: (6, 3), 15: (6, 7), 16: (7, 0), 17: (7, 3),
+                        18: (7, 5), 19: (7, 6), 20: (8, 3), 21: (8, 5), 22: (8, 8),
+                        23: (8, 10), 24: (8, 14), 25: (9, 1)}
+    minimums = dict(runtime_minimums)
+    if not runtime:
+        minimums.update({20: (8, 1), 21: (8, 4), 22: (8, 7)})
+    java = int(java)
+    if java not in minimums:
+        raise ValueError(f"Java {java} has no known Gradle compatibility rule in this template; update the compatibility table.")
+    if gradle < minimums[java]:
+        raise ValueError(f"Java {java} {'runtime' if runtime else 'toolchain'} requires Gradle {'.'.join(map(str, minimums[java]))} or newer.")
+    if runtime and gradle[0] >= 9 and java < 17:
+        raise ValueError("Gradle 9 requires a Java runtime of at least 17.")
 
 
 def expand(text, config, json_resource=False):
@@ -49,7 +73,6 @@ def expand(text, config, json_resource=False):
         if key not in config:
             raise ValueError(f"Resource references undefined property {key!r}")
         value = config[key]
-        # JSON metadata places numbers outside strings and text inside strings.
         return json.dumps(value, ensure_ascii=False)[1:-1] if json_resource else value
     return re.sub(r"\$\{([A-Za-z_]\w*)\}", replace, text)
 
@@ -74,58 +97,69 @@ def validate_services(directory):
         providers = [name for name in providers if name]
         if not providers or any(not re.fullmatch(qualified_name, name) for name in providers):
             raise ValueError(f"Missing or invalid service provider: {service}")
-        # A template can retain service declarations before any Java code exists.
 
 
 def validate(root):
-    for name in ("settings.gradle", "build.gradle", "gradle.properties", "gradle/modules.txt",
-                 "gradle/build-plan.gradle", "README.md", "AGENTS.md"):
+    for name in ("settings.gradle", "build.gradle", "gradle.properties", "gradle/build-plan.gradle",
+                 "gradle/scaffold.gradle", "gradle/bootstrap/settings.gradle", "gradle/bootstrap/build.gradle",
+                 "README.md", "AGENTS.md"):
         require(root / name)
     config = properties(root / "gradle.properties")
     for key in ("version", "group", "mod_id", "minecraft_version", "java_version"):
         if not config.get(key):
             raise ValueError(f"Required project property {key!r} is empty or absent")
-    if not config["java_version"].isdigit():
-        raise ValueError("java_version must be a Java language version number")
-    root_gradle_version = validate_wrapper(root)
+    language_version(config, "java_version")
     modules, minestom = discover(root)
-    if any(module in ("fabric", "forge", "neoforge") for module in modules):
-        if config["java_version"] != "21" or root_gradle_version[0] != 8:
-            raise ValueError("Modloader targets require java_version=21 and the Gradle 8 wrapper")
-    descriptors = {
-        "common": "pack.mcmeta",
-        "fabric": "fabric.mod.json",
-        "forge": "META-INF/mods.toml",
-        "neoforge": "META-INF/neoforge.mods.toml",
-    }
+    root_gradle = validate_wrapper(root, config)
+    root_runtime = language_version(config, "gradle_java_version")
+    validate_java(root_gradle, root_runtime, runtime=True)
+    buildsrc_java = module_java(config, "buildsrc")
+    validate_java(root_gradle, buildsrc_java)
+    if int(buildsrc_java) > int(root_runtime):
+        raise ValueError("buildsrc_java_version cannot exceed gradle_java_version: Gradle must load the buildSrc bytecode.")
+    if "forge" in modules and config.get("forgegradle_version", "").split(".")[0] == "6" and root_gradle[0] >= 9:
+        raise ValueError("ForgeGradle 6 requires a root Gradle version below 9.")
+    descriptors = {"common": "pack.mcmeta", "fabric": "fabric.mod.json",
+                   "forge": "META-INF/mods.toml", "neoforge": "META-INF/neoforge.mods.toml"}
+    initializing = []
     for module in modules:
         directory = root / module
+        java = module_java(config, module)
+        validate_java(root_gradle, java)
+        if config["minecraft_version"] == "1.21.10" and module in descriptors and int(java) < 21:
+            raise ValueError(f"Minecraft 1.21.10 requires a Java toolchain of at least 21 for {module}.")
+        if empty_module(directory):
+            initializing.append(module)
+            continue
+        resource_config = dict(config, java_version=java)
         if module in descriptors:
-            validate_resource(directory / "src/main/resources" / descriptors[module], config)
+            validate_resource(directory / "src/main/resources" / descriptors[module], resource_config)
         for resource in (directory / "src/main/resources").glob("*.mixins.json"):
-            validate_resource(resource, config)
+            validate_resource(resource, resource_config)
         validate_services(directory)
     if minestom:
-        minestom_gradle_version = validate_wrapper(root / "minestom")
-        minestom_config = dict(config)
-        extra = root / "minestom/gradle.properties"
-        if extra.is_file():
-            minestom_config.update(properties(extra))
-        version = minestom_config.get("minestom_version", "")
-        if not version.endswith("-" + config["minecraft_version"]):
+        directory = root / "minestom"
+        wrapper_root = root / "gradle/templates/minestom" if empty_module(directory) else directory
+        require(wrapper_root / "settings.gradle")
+        minestom_gradle = validate_wrapper(wrapper_root, config, "minestom_", preset=empty_module(directory))
+        validate_java(minestom_gradle, language_version(config, "minestom_gradle_java_version"), runtime=True)
+        minestom_java = module_java(config, "minestom")
+        validate_java(minestom_gradle, minestom_java)
+        if config["minecraft_version"] == "1.21.10" and int(minestom_java) < 25:
+            raise ValueError("The configured Minestom 1.21.10 release requires a Java toolchain of at least 25.")
+        if not config.get("minestom_version", "").endswith("-" + config["minecraft_version"]):
             raise ValueError("minestom_version must explicitly target minecraft_version")
-        if minestom_config.get("minestom_java_version") != "25":
-            raise ValueError("The configured Minestom target requires minestom_java_version=25")
-        if minestom_gradle_version < (9, 1):
-            raise ValueError("Java 25 Minestom requires a standalone Gradle 9.1 or newer wrapper")
-        validate_services(root / "minestom")
+        if empty_module(directory):
+            initializing.append("minestom")
+        else:
+            validate_services(directory)
     if not any(module in descriptors and module != "common" for module in modules) and not minestom:
         raise ValueError("No supported application target remains in the template")
-    return {"result": "passed", "mode": "template", "modules": modules,
-            "minestom": minestom, "java_sources_required": False,
-            "checks": ["project properties", "shared module manifest and present directories", "wrapper files and checksum declarations",
-                       "resource placeholders and syntax", "service declarations"],
-            "application_builds_executed": False}
+    return {"result": "passed", "mode": "template", "modules": modules, "minestom": minestom,
+            "initialization_modules": initializing, "java_sources_required": False,
+            "checks": ["central project and module properties", "present directories and initialization presets",
+                       "wrapper version and checksum consistency", "Java and Gradle compatibility",
+                       "resource placeholders and syntax", "service declarations"], "application_builds_executed": False}
 
 
 def main():

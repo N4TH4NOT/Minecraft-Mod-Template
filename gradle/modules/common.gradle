@@ -17,10 +17,10 @@ neoForge {
 }
 
 dependencies {
-    compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.7'
+    compileOnly group: 'org.spongepowered', name: 'mixin', version: mixin_version
     // Each loader packages the matching MixinExtras runtime.
-    compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.5.5'
-    annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.5.5'
+    compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: mixinextras_version
+    annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: mixinextras_version
 }
 
 configurations {

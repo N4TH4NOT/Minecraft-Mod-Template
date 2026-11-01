@@ -1,6 +1,0 @@
-# Root Gradle modules. Missing optional directories are excluded automatically.
-# common is required. Minestom has its own standalone build.
-common
-fabric
-neoforge
-forge

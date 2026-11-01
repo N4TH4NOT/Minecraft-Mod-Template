@@ -1,1 +1,9 @@
-rootProject.name = 'Minecraft-Mod-Template-Minestom'
+def configuration = new Properties()
+file('../gradle.properties').withReader('UTF-8') { configuration.load(it) }
+def projectName = providers.gradleProperty('project_name').orElse(configuration.getProperty('project_name', '')).get()
+if (projectName.isBlank()) {
+    throw new GradleException('Missing central project_name')
+}
+rootProject.name = projectName + '-Minestom'
+rootProject.buildFileName = '../gradle/modules/minestom.gradle'
+apply from: file('../gradle/scaffold.gradle')

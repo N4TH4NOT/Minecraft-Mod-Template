@@ -1,7 +1,9 @@
 pluginManagement {
     plugins {
-        id 'fabric-loom' version '1.13.6'
-        id 'net.neoforged.moddev' version '2.0.148'
+        id 'fabric-loom' version providers.gradleProperty('fabric_loom_version').get()
+        id 'net.neoforged.moddev' version providers.gradleProperty('moddevgradle_version').get()
+        id 'net.minecraftforge.gradle' version providers.gradleProperty('forgegradle_version').get()
+        id 'org.spongepowered.mixin' version providers.gradleProperty('mixingradle_version').get()
     }
     repositories {
         gradlePluginPortal()
@@ -45,43 +47,52 @@ pluginManagement {
 }
 
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+    id 'org.gradle.toolchains.foojay-resolver-convention' version providers.gradleProperty('foojay_resolver_version').get()
 }
 
-// This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
-rootProject.name = 'Minecraft-Mod-Template'
-
-def moduleManifest = file('gradle/modules.txt')
-if (!moduleManifest.isFile()) {
-    throw new GradleException('Missing module manifest: gradle/modules.txt')
+rootProject.name = providers.gradleProperty('project_name').get()
+def csvProperty = { String key ->
+    providers.gradleProperty(key).orElse('').get().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
 }
-def declaredModules = moduleManifest.readLines('UTF-8')
-        .collect { it.split('#', 2)[0].trim() }
-        .findAll { !it.isEmpty() }
+def declaredModules = csvProperty('modules')
+def requiredModules = csvProperty('required_modules')
+def standaloneModules = csvProperty('standalone_modules')
 def seenModules = new LinkedHashSet<String>()
 declaredModules.each { name ->
     if (!(name ==~ /[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*/) || !seenModules.add(name)) {
-        throw new GradleException("Invalid or duplicate module in gradle/modules.txt: ${name}")
-    }
-    if (name == 'minestom') {
-        throw new GradleException('Minestom uses a standalone build; keep it out of gradle/modules.txt')
+        throw new GradleException("Invalid or duplicate module in gradle.properties: ${name}")
     }
 }
-if (!declaredModules.contains('common') || !file('common').isDirectory()) {
-    throw new GradleException('The required common/ module must be declared and present.')
+if (!declaredModules.containsAll(requiredModules) || !declaredModules.containsAll(standaloneModules)
+        || !requiredModules.contains('common') || standaloneModules.contains('common')
+        || (declaredModules.contains('minestom') && !standaloneModules.contains('minestom'))) {
+    throw new GradleException('Invalid module configuration: common must be required and Minestom must be standalone.')
 }
+requiredModules.each { name ->
+    if (!file(name).isDirectory()) {
+        throw new GradleException("Required module directory is missing: ${name}/")
+    }
+}
+
+// Initialize only already-present empty module directories; never recreate deleted targets.
+apply from: file('gradle/scaffold.gradle')
 
 def includedModules = []
 def excludedModules = []
-declaredModules.each { name ->
+declaredModules.findAll { !(it in standaloneModules) }.each { name ->
     def directory = file(name)
     if (!directory.exists() && !java.nio.file.Files.isSymbolicLink(directory.toPath())) {
         excludedModules.add(name)
     } else {
-        if (!directory.isDirectory() || !new File(directory, 'build.gradle').isFile()) {
-            throw new GradleException("Module ${name} is present but has no build.gradle")
+        def centralBuild = file("gradle/modules/${name}.gradle")
+        def buildScript = centralBuild.isFile() ? centralBuild : new File(directory, 'build.gradle')
+        if (!directory.isDirectory() || !buildScript.isFile()) {
+            throw new GradleException("Module ${name} has no central or local build configuration")
         }
-        include(name.replace('/', ':'))
+        def projectPath = name.replace('/', ':')
+        include(projectPath)
+        project(":${projectPath}").projectDir = directory
+        project(":${projectPath}").buildFileName = directory.toPath().relativize(buildScript.toPath()).toString()
         includedModules.add(name)
     }
 }

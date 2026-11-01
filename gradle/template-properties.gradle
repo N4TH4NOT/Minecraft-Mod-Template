@@ -1,0 +1,35 @@
+// Shared by the root build, its conventions, buildSrc and standalone builds.
+def templateDirectory = rootProject.projectDir
+while (templateDirectory != null && !(new File(templateDirectory, 'gradle.properties').isFile()
+        && new File(templateDirectory, 'gradle/template-properties.gradle').isFile())) {
+    templateDirectory = templateDirectory.parentFile
+}
+if (templateDirectory == null) {
+    throw new GradleException('Cannot locate the central template configuration')
+}
+def propertiesFile = new File(templateDirectory, 'gradle.properties')
+if (!propertiesFile.isFile()) {
+    throw new GradleException('Missing central configuration: gradle.properties')
+}
+def templateProperties = new Properties()
+propertiesFile.withReader('UTF-8') { templateProperties.load(it) }
+ext.templateRootDirectory = templateDirectory
+
+// Honor explicit Gradle overrides; seed only properties absent in standalone builds.
+templateProperties.each { key, value ->
+    if (!project.hasProperty(key.toString())) {
+        project.extensions.extraProperties.set(key.toString(), value.toString())
+    }
+}
+ext.templateProperty = { String name ->
+    def value = providers.gradleProperty(name).orNull
+    if (value == null) {
+        value = project.extensions.extraProperties.has(name)
+                ? project.extensions.extraProperties.get(name).toString()
+                : templateProperties.getProperty(name)
+    }
+    if (value == null || value.isBlank()) {
+        throw new GradleException("Missing or empty central property: ${name}")
+    }
+    value
+}

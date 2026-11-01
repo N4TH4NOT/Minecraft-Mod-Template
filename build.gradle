@@ -1,3 +1,5 @@
+apply from: file('gradle/template-properties.gradle')
+apply from: file('gradle/wrapper-configuration.gradle')
 apply from: file('gradle/build-plan.gradle')
 
 def updateFlag = providers.gradleProperty('autoUpdateModVersions').orElse('false').get()

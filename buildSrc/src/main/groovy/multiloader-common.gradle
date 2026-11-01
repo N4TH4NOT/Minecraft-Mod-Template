@@ -3,25 +3,39 @@ plugins {
     id 'maven-publish'
 }
 
+apply from: rootProject.file('gradle/template-properties.gradle')
+
+def javaProperty = project.hasProperty("${project.name}_java_version") ? "${project.name}_java_version" : 'java_version'
+ext.effectiveJavaVersion = templateProperty(javaProperty).toInteger()
+
 base {
     archivesName = "${mod_id}-${project.name}-${minecraft_version}"
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    toolchain.languageVersion = JavaLanguageVersion.of(effectiveJavaVersion)
     withSourcesJar()
     withJavadocJar()
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = templateProperty('java_encoding')
+}
+
 dependencies {
-    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'com.google.code.gson:gson:2.15.0'
+    testImplementation "com.google.code.gson:gson:${gson_version}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    systemProperty 'template.minecraft.version', templateProperty('minecraft_version')
+    systemProperty 'template.minecraft.version.range', templateProperty('minecraft_version_range')
+    systemProperty 'template.minecraft.pack.version', templateProperty('minecraft_pack_version')
+    systemProperty 'template.java.version', effectiveJavaVersion.toString()
+    maxHeapSize = templateProperty('test_max_heap_size')
 }
 
 repositories {
@@ -128,7 +142,7 @@ processResources {
             "forge_version"                : forge_version,
             "forge_loader_version_range"   : forge_loader_version_range,
             'credits'                      : credits,
-            'java_version'                 : java_version,
+            'java_version'                 : effectiveJavaVersion,
             'minecraft_data_version'       : minecraft_data_version,
             'minecraft_pack_version'       : minecraft_pack_version
     ]

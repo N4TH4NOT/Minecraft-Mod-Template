@@ -11,19 +11,23 @@ import static org.junit.jupiter.api.Assertions.*;
 class PackMetadataTest {
 
     @Test
-    void generatedPackMetadataDeclaresTheMinecraft12110FormatRange() throws IOException {
+    void generatedPackMetadataDeclaresTheConfiguredFormatRange() throws IOException {
         try (var input = getClass().getClassLoader().getResourceAsStream("pack.mcmeta")) {
             assertNotNull(input, "The generated resource pack metadata must be packaged");
             String text = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             assertFalse(text.contains("${"), "Pack metadata must not contain unexpanded Gradle properties");
             var pack = JsonParser.parseString(text).getAsJsonObject().getAsJsonObject("pack");
 
-            // Minecraft 1.21.10 requires min_format and max_format for resource formats above 64.
+            String configuredFormat = System.getProperty("template.minecraft.pack.version");
+            assertNotNull(configuredFormat, "The resource pack format must be supplied by the build");
+            int expectedFormat = Integer.parseInt(configuredFormat);
             assertTrue(pack.has("min_format"), "The minimum resource format is required");
             assertTrue(pack.has("max_format"), "The maximum resource format is required");
-            assertTrue(pack.get("min_format").getAsInt() <= 69, "The resource pack must accept format 69");
-            assertTrue(pack.get("max_format").getAsInt() >= 69, "The resource pack must accept format 69");
-            assertEquals(69, pack.get("pack_format").getAsInt());
+            assertTrue(pack.get("min_format").getAsInt() <= expectedFormat,
+                    "The minimum resource format must accept the configured format");
+            assertTrue(pack.get("max_format").getAsInt() >= expectedFormat,
+                    "The maximum resource format must accept the configured format");
+            assertEquals(expectedFormat, pack.get("pack_format").getAsInt());
         }
     }
 }

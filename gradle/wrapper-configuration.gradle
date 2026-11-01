@@ -1,0 +1,21 @@
+import org.gradle.api.tasks.wrapper.Wrapper
+
+def standalone = rootProject.projectDir != templateRootDirectory
+tasks.named('wrapper', Wrapper) {
+    gradleVersion = templateProperty(standalone ? 'minestom_gradle_version' : 'gradle_version')
+    distributionType = Wrapper.DistributionType.BIN
+    distributionSha256Sum = templateProperty(standalone
+            ? 'minestom_gradle_distribution_sha256' : 'gradle_distribution_sha256')
+}
+
+if (standalone) {
+    tasks.register('syncWrapperPreset', Copy) {
+        group = 'build setup'
+        description = 'Update the standalone wrapper and the preset used for empty Minestom directories.'
+        dependsOn tasks.named('wrapper')
+        from(layout.projectDirectory) {
+            include 'gradlew', 'gradlew.bat', 'gradle/wrapper/gradle-wrapper.jar'
+        }
+        into new File(templateRootDirectory, 'gradle/templates/minestom')
+    }
+}

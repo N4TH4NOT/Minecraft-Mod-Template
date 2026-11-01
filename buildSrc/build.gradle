@@ -2,16 +2,24 @@ plugins {
     id 'groovy-gradle-plugin'
 }
 
+apply from: file('../gradle/template-properties.gradle')
+
+def buildJavaProperty = project.hasProperty('buildsrc_java_version') ? 'buildsrc_java_version' : 'java_version'
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(templateProperty(buildJavaProperty).toInteger())
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    maxHeapSize = templateProperty('test_max_heap_size')
 }

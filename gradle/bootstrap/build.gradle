@@ -1,0 +1,2 @@
+// Deliberately empty: Settings initializes existing empty targets without
+// configuring the application projects or compiling their buildSrc.

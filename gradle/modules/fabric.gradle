@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    include(implementation(annotationProcessor('io.github.llamalad7:mixinextras-fabric:0.5.5')))
+    include(implementation(annotationProcessor("io.github.llamalad7:mixinextras-fabric:${mixinextras_version}")))
     minecraft "com.mojang:minecraft:${minecraft_version}"
     mappings loom.layered {
         officialMojangMappings()
@@ -40,13 +40,13 @@ loom {
             client()
             setConfigName('Fabric Client')
             ideConfigGenerated(true)
-            runDir('runs/client')
+            runDir(templateProperty('run_client_directory'))
         }
         server {
             server()
             setConfigName('Fabric Server')
             ideConfigGenerated(true)
-            runDir('runs/server')
+            runDir(templateProperty('run_server_directory'))
         }
     }
 }
