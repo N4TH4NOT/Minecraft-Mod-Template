@@ -3,7 +3,7 @@ package __PACKAGE__;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 
-@Config(name = __MOD_ID_LITERAL__)
+@Config(name = Constants.MOD_ID)
 public class FabricModIdConfig
     implements ConfigData, ModIdConfig {
 }
