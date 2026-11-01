@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    testImplementation 'org.tomlj:tomlj:2.2.0'
     implementation(jarJar('io.github.llamalad7:mixinextras-neoforge:0.5.5'))
 }
 

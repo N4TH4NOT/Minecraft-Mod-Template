@@ -21,7 +21,7 @@ public class ModId
         CommonClass.init();
 
         //Register config and use json serializer/deserializer
-        AutoConfig.register(CONFIG.getClass(), GsonConfigSerializer::new);
+        CONFIG = AutoConfig.register(FabricModIdConfig.class, GsonConfigSerializer::new).getConfig();
     }
 
     public static FabricModIdConfig getConfig() {

@@ -74,6 +74,7 @@ sourceSets.main.resources.srcDir 'src/generated/resources'
 jarJar.enable()
 
 dependencies {
+    testImplementation 'org.tomlj:tomlj:2.2.0'
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor("org.spongepowered:mixin:0.8.7:processor")
     compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.5.5'))

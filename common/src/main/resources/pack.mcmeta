@@ -1,6 +1,8 @@
 {
     "pack": {
         "description": "${mod_name}",
-        "pack_format": ${minecraft_pack_version}
+        "pack_format": ${minecraft_pack_version},
+        "min_format": ${minecraft_pack_version},
+        "max_format": ${minecraft_pack_version}
     }
 }

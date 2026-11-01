@@ -8,7 +8,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 @Environment(EnvType.CLIENT)
-class ModMenuIntegration
+public class ModMenuIntegration
     implements ModMenuApi {
 
     @Override
