@@ -4,6 +4,7 @@ pluginManagement {
         id 'net.neoforged.moddev' version providers.gradleProperty('moddevgradle_version').get()
         id 'net.minecraftforge.gradle' version providers.gradleProperty('forgegradle_version').get()
         id 'org.spongepowered.mixin' version providers.gradleProperty('mixingradle_version').get()
+        id 'org.gradle.toolchains.foojay-resolver-convention' version providers.gradleProperty('foojay_resolver_version').get()
     }
     repositories {
         gradlePluginPortal()
@@ -47,7 +48,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version providers.gradleProperty('foojay_resolver_version').get()
+    id 'org.gradle.toolchains.foojay-resolver-convention'
 }
 
 rootProject.name = providers.gradleProperty('project_name').get()
