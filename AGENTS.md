@@ -40,6 +40,12 @@ Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
 `common/` dépend des classes Minecraft vanilla, absentes de Minestom.
 Les propriétés partagées restent centralisées dans `gradle.properties`.
 
+`common/` est obligatoire. Les cibles `fabric/`, `forge/`, `neoforge/` et
+`minestom/` sont optionnelles : un dossier cible absent doit être exclu
+automatiquement de Gradle et de la CI. Conserver la liste des modules du
+build racine dans `gradle/modules.txt`, lue par ces deux outils.
+Un dossier présent sans sa configuration Gradle reste une erreur.
+
 Si nécessaire, utiliser `docs/` pour la documentation, `scripts/` pour les
 scripts de maintenance et d’automatisation, et `work/` pour les brouillons,
 analyses et fichiers temporaires. Documenter les évolutions de l’arborescence
@@ -118,6 +124,11 @@ ses configurations et son outillage sans exiger de compilation ni de
 tests applicatifs. Pour un projet dérivé, compiler les cibles présentes
 et vérifier leurs résultats de tests. Les tests des scripts de CI restent
 dans `scripts/ci/tests/` et s’exécutent eux aussi dans GitHub Actions.
+
+Avant de lancer une construction, informer l’utilisateur des modules dont
+la compilation est prévue et des modules exclus. Afficher également ce
+bilan dans les logs Gradle et la synthèse GitHub Actions. Distinguer les
+dossiers absents des cibles présentes mais non sélectionnées.
 
 Vérifier les résultats du commit exact concerné.
 Distinguer les contrôles réussis, échoués, ignorés et non exécutés.

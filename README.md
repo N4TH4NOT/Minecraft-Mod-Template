@@ -16,6 +16,16 @@ Consulter [la configuration et les versions compatibles](docs/configuration.md),
 [l’organisation](docs/organisation.md) et [les règles de versionnement](docs/versionnement.md).
 Les consignes de contribution sont dans [AGENTS.md](AGENTS.md).
 
+`common/` est obligatoire. Pour retirer une cible, supprimer simplement
+son dossier `fabric/`, `forge/`, `neoforge/` ou `minestom/` : Gradle et la
+CI l’excluent automatiquement. Le build racine et la CI partagent la liste
+`gradle/modules.txt`. Un dossier présent sans son `build.gradle` est signalé
+comme incomplet. Minestom conserve son build autonome.
+
+Avant les tâches, Gradle affiche les modules avec compilation planifiée,
+les dossiers absents exclus et les modules présents non sélectionnés.
+Ce bilan est aussi publié dans la synthèse de la CI.
+
 ## Validation
 
 Les compilations et les tests s’exécutent exclusivement dans GitHub Actions,

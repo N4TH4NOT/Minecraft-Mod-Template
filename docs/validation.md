@@ -20,10 +20,15 @@ présentés comme une compilation ou un essai de démarrage du produit.
 
 ## Parcours projet
 
-La matrice est construite à partir des cibles configurées dans le dépôt.
-Une cible retirée de la configuration ne doit plus rester dans une matrice
-codée en dur. Le build autonome Minestom est détecté séparément du build
-multi-module des mods.
+La matrice est construite à partir de `gradle/modules.txt`, également lu
+par Gradle, et des dossiers réellement présents. Supprimer `forge/`, par
+exemple, suffit à l’exclure sans modifier cette liste ni `settings.gradle`.
+Les autres cibles restent disponibles. Un dossier présent mais incomplet
+est signalé comme une erreur. `common/` et son entrée dans la liste restent
+obligatoires. Conserver au moins une cible applicative.
+
+Le build autonome Minestom est détecté séparément du build multi-module
+des mods et ne doit pas figurer dans `gradle/modules.txt`.
 
 | Cible | Chaîne | Contrôles applicatifs |
 | --- | --- | --- |
@@ -39,6 +44,21 @@ suite applicative attendue, les rapports doivent exister et compter au
 moins un test exécuté, hors tests ignorés. Les échecs ne sont pas masqués.
 Les rapports sont conservés même en cas d’échec ; les artefacts doivent
 être présents après une construction réussie.
+
+## Bilan avant la construction
+
+Gradle affiche d’abord les modules présents et absents, puis la tâche
+`reportBuildPlan` présente les modules ayant des tâches Java de compilation
+dans le graphe réellement sélectionné. Elle précède les autres tâches et
+s’exécute aussi lorsque le cache de configuration est réutilisé. Minestom
+utilise le même rapport avec son build autonome.
+
+Les modules présents sans compilation planifiée sont affichés séparément
+des dossiers absents. Une compilation planifiée peut ensuite être évitée
+par Gradle si ses sorties sont à jour ou récupérées depuis le cache.
+La CI publie le même périmètre avant ses constructions, dans les logs
+et dans la synthèse de l’exécution. En mode template, aucune compilation
+applicative n’est planifiée.
 
 ## Déclenchement manuel
 
