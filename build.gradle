@@ -4,3 +4,33 @@ plugins {
     // see https://projects.neoforged.net/neoforged/moddevgradle for new versions
     id 'net.neoforged.moddev' version '2.0.148' apply false
 }
+
+def updateFlag = providers.gradleProperty('autoUpdateModVersions').orElse('false').get()
+if (me.n4th4not.gradle.AutoModVersionUpdates.shouldUpdate(updateFlag, gradle.startParameter.taskNames)) {
+    if (gradle.startParameter.configurationCacheRequested) {
+        throw new GradleException('Automatic version updates require --no-configuration-cache to query releases on every build.')
+    }
+    def versions = me.n4th4not.gradle.ModVersionUpdate.execute(
+            layout.projectDirectory.file('gradle.properties').asFile, true,
+            gradle.startParameter.offline, logger)
+    // gradle.properties was loaded before project configuration. Override that
+    // in-memory snapshot so this very build, including tests, uses the new versions.
+    allprojects { target ->
+        versions.each { key, value -> target.extensions.extraProperties.set(key, value) }
+    }
+}
+
+tasks.register('checkModUpdates', me.n4th4not.gradle.UpdateModVersions) {
+    group = 'mod development'
+    description = 'Show the latest stable mod dependencies compatible with minecraft_version (no changes).'
+    propertiesFile = layout.projectDirectory.file('gradle.properties')
+    offlineMode = gradle.startParameter.offline
+}
+
+tasks.register('updateModVersions', me.n4th4not.gradle.UpdateModVersions) {
+    group = 'mod development'
+    description = 'Update modloader and mod dependency versions in gradle.properties, keeping Minecraft fixed.'
+    propertiesFile = layout.projectDirectory.file('gradle.properties')
+    offlineMode = gradle.startParameter.offline
+    applyUpdates = true
+}
