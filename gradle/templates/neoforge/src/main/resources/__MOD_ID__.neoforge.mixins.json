@@ -4,7 +4,7 @@
   "package": "${group}.mixin",
   "compatibilityLevel": "JAVA_${java_version}",
   "mixins": [],
-  "client": [],
+  "client": ["MixinTitleScreen"],
   "server": [],
   "injectors": {
     "defaultRequire": 1

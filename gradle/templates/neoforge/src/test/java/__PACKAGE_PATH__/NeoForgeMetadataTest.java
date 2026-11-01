@@ -9,6 +9,10 @@ import org.tomlj.Toml;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,6 +54,45 @@ class NeoForgeMetadataTest {
                 for (JsonElement mixin : mixins.getAsJsonArray(side)) {
                     String className = mixins.get("package").getAsString() + "." + mixin.getAsString();
                     assertNotNull(getClass().getClassLoader().getResource(className.replace('.', '/') + ".class"), className);
+                }
+            }
+        }
+    }
+
+    @Test
+    void everyMixinClassInAConfiguredPackageIsDeclared() throws Exception {
+        var descriptor = Toml.parse(resource("META-INF/neoforge.mods.toml"));
+        assertFalse(descriptor.hasErrors(), () -> descriptor.errors().toString());
+        var configurations = descriptor.getArray("mixins");
+        assertNotNull(configurations);
+        Set<String> declared = new HashSet<>();
+        Set<String> packages = new HashSet<>();
+        for (int index = 0; index < configurations.size(); index++) {
+            String name = configurations.getTable(index).getString("config");
+            JsonObject mixins = JsonParser.parseString(resource(name)).getAsJsonObject();
+            String packageName = mixins.get("package").getAsString();
+            packages.add(packageName);
+            for (String side : new String[]{"mixins", "client", "server"}) {
+                for (JsonElement mixin : mixins.getAsJsonArray(side)) {
+                    declared.add(packageName + "." + mixin.getAsString());
+                }
+            }
+        }
+        for (String packageName : packages) {
+            var directories = getClass().getClassLoader().getResources(packageName.replace('.', '/'));
+            while (directories.hasMoreElements()) {
+                var directory = directories.nextElement();
+                if (!"file".equals(directory.getProtocol())) {
+                    continue;
+                }
+                try (var files = Files.list(Path.of(directory.toURI()))) {
+                    files.map(file -> file.getFileName().toString())
+                            .filter(file -> file.endsWith(".class") && !file.contains("$")
+                                    && !file.equals("package-info.class"))
+                            .forEach(file -> {
+                                String className = packageName + "." + file.substring(0, file.length() - ".class".length());
+                                assertTrue(declared.contains(className), "Undeclared mixin class: " + className);
+                            });
                 }
             }
         }
