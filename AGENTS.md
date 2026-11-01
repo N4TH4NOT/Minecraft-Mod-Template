@@ -63,8 +63,9 @@ Keep a feature, its fixes, tests, docs and CI adjustments on one branch until
 delivery. Use descriptive branch names with `feat/`, `fix/`, `refactor/`, `docs/`,
 `test/`, `build/`, `ci/` or `chore/`; do not prefix them with an agent name.
 
-Write focused commits as `type(scope): subject`, with an optional scope and the
-same types as branches. **Commit subjects and bodies must be in English only.**
+Write focused commits as `type(scope): subject`. Always include the affected
+component as the scope and use the same types as branches. **Commit subjects and
+bodies must be in English only.** Changing language must preserve this format.
 When translating historical commit messages, preserve author and committer
 timestamps, including their timezone offsets.
 Separate independent changes and retain thematic commits during merges unless

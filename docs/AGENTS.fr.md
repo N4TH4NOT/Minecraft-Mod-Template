@@ -70,9 +70,10 @@ une seule branche jusqu’à livraison. Utiliser un nom descriptif préfixé par
 `feat/`, `fix/`, `refactor/`, `docs/`, `test/`, `build/`, `ci/` ou `chore/` ; ne pas
 le préfixer par le nom d’un agent.
 
-Écrire des commits ciblés au format `type(scope): subject`, avec portée
-facultative et les mêmes types que les branches. **Titres et descriptions des
-commits doivent être exclusivement en anglais.** Séparer les changements
+Écrire des commits ciblés au format `type(scope): subject`. Toujours indiquer
+le composant concerné dans la portée et utiliser les mêmes types que les branches.
+**Titres et descriptions des commits doivent être exclusivement en anglais.**
+Un changement de langue doit conserver ce format. Séparer les changements
 indépendants et conserver les commits thématiques lors d’une fusion, sauf
 demande contraire.
 
