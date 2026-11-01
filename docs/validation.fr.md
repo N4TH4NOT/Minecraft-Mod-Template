@@ -85,10 +85,14 @@ les exclusions et les motifs d’échec. Ses tests utilisent des réponses simul
 le job consulte les dépôts réels. Une publication existante ne prouve pas à elle
 seule la compatibilité du code applicatif.
 
-La synthèse utilise un tableau par module et un tableau **Shared dependencies**
-pour les versions partagées par plusieurs modules actifs. L’outillage et la
-configuration ont leurs propres tableaux. Chaque propriété apparaît une seule
-fois, avec son périmètre et son statut.
+Chaque propriété de version publiée apparaît une seule fois : dans le tableau
+de sa cible, ou dans **Shared dependencies** si plusieurs modules actifs
+l’utilisent. Par exemple, `mixinextras_version` reste une ligne commune.
+La distribution Gradle Minestom reste dans Minestom ; l’outillage racine est
+séparé. La version du produit,
+Java, les paramètres sans contrôle de publication et les dépendances inactives
+sont omis des tableaux.
+Le JSON complet et les diagnostics de configuration restent disponibles.
 
 ## Contrôles d’un projet
 

@@ -81,9 +81,13 @@ exclusions and failure reasons. Unit tests use simulated responses; the job
 queries real repositories. A published version alone does not prove application
 API compatibility.
 
-The summary uses one table per module and a **Shared dependencies** table for
-versions used by multiple active modules. Build tooling and configuration have
-separate tables. Each property appears once, with its scope and status.
+Each published version property appears once: in its module's table, or in
+**Shared dependencies** when used by multiple active modules. For example,
+`mixinextras_version` stays a single shared row. Minestom's Gradle distribution
+belongs to Minestom; root tooling stays separate.
+The product version, Java settings, parameters without publication checks and
+inactive dependencies are omitted from tables. The complete JSON and
+configuration diagnostics remain available.
 
 ## Project checks
 

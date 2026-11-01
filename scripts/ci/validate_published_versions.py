@@ -222,7 +222,7 @@ def presentation_scope(key, config, active):
     elif key == "parchment_minecraft":
         scope = set(MAVEN_PINS["parchment_version"][3])
     elif key in DISTRIBUTIONS or key.endswith("java_version") and key != "java_version":
-        group = "Build tooling"
+        group = None if key in DISTRIBUTIONS else "Build tooling"
         owner = key.removesuffix("_gradle_java_version").removesuffix("_java_version")
         scope = {"minestom" if key.startswith("minestom_") else "root" if key in DISTRIBUTIONS or key == "gradle_java_version" else owner}
     elif key == "java_version":
@@ -311,9 +311,12 @@ def markdown_summary(report):
     statuses = {"checked": "✅ Checked", "failed": "❌ Failed",
                 "unverified": "⚠️ Unverified", "skipped": "⏩ Skipped"}
     lines = ["### Published version metadata", "", f"Result: **{report['result']}**", ""]
-    groups = ("Shared dependencies", "Common", "Fabric", "Forge", "NeoForge", "Minestom", "Build tooling", "Configuration")
+    published_keys = set(PLUGIN_PINS) | set(MAVEN_PINS) | DISTRIBUTIONS | {"minecraft_version", "parchment_minecraft"}
+    visible = [entry for entry in report["pins"] if entry["property"] in published_keys
+               and entry["status"] in ("checked", "failed", "unverified")]
+    groups = ("Shared dependencies", "Common", "Fabric", "Forge", "NeoForge", "Minestom", "Build tooling")
     for group in groups:
-        entries = [entry for entry in report["pins"] if entry.get("summary_group", "Configuration") == group]
+        entries = [entry for entry in visible if entry.get("summary_group") == group]
         if not entries:
             continue
         lines.extend([f"#### {group}", "", "| Property | Value | Used by | Status | Detail |",
@@ -328,6 +331,13 @@ def markdown_summary(report):
                       statuses.get(entry.get("status"), entry.get("status", "")), entry.get("detail", "")]
             lines.append("| " + " | ".join(escape(value) for value in values) + " |")
         lines.append("")
+    diagnostics = [entry for entry in report["pins"] if entry["property"] not in published_keys
+                   and entry["status"] in ("failed", "unverified")]
+    if diagnostics:
+        lines.extend(["#### Configuration diagnostics", ""])
+        for entry in diagnostics:
+            detail = str(entry.get("detail", "")).replace("\n", " ")
+            lines.append(f"- {statuses[entry['status']]} `{entry['property']}`: {detail}")
     if report.get("error"):
         lines.extend(["", "Configuration error: " + str(report["error"]).replace("\n", " ")])
     lines.extend(["", "Metadata only; no dependency download or compatibility claim.", ""])

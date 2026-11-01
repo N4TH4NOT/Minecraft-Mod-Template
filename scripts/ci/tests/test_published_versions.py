@@ -277,21 +277,49 @@ class PublicationCatalogTest(unittest.TestCase):
         self.assertEqual("Build tooling", pins["foojay_resolver_version"]["summary_group"])
         self.assertEqual("Configuration", pins["version"]["summary_group"])
 
-    def test_summary_keeps_each_pin_once_in_its_own_table_even_when_missing_or_unused(self):
+    def test_summary_keeps_original_dependency_rows_and_omits_unchecked_parameters(self):
         config, reader = self.baseline()
+        config.update(mixinextras_version="0.5.5", minestom_java_version="25")
+        for target in ("common", "fabric"):
+            publish(reader, CENTRAL, "io.github.llamalad7", "mixinextras-" + target, "0.5.5")
         report = verify_config(config, {"common", "fabric", "minestom"}, reader, pause=lambda _: None)
         summary = markdown_summary(report)
         sections = {part.split("\n", 1)[0]: part for part in summary.split("#### ")[1:]}
-        for pin in report["pins"]:
-            self.assertEqual(1, summary.count("| " + pin["property"] + " |"), pin["property"])
+        self.assertEqual(1, summary.count("| mixinextras_version |"))
+        self.assertIn("| mixinextras_version |", sections["Shared dependencies"])
+        self.assertNotIn("| mixinextras_version |", sections["Fabric"])
+        self.assertNotIn("mixinextras-fabric", summary)
         self.assertIn("| minestom_version |", sections["Minestom"])
         self.assertIn("❌ Failed", sections["Minestom"])
         self.assertNotIn("| minestom_version |", sections["Shared dependencies"])
-        self.assertIn("| forge_version |", sections["Forge"])
-        self.assertIn("⏩ Skipped", sections["Forge"])
-        self.assertIn("Forge (inactive)", sections["Forge"])
-        self.assertIn("| new_library_version |", markdown_summary(
-            verify_config({**config, "new_library_version": "1.0.0"}, set(), reader, pause=lambda _: None)))
+        self.assertNotIn("#### Forge\n", summary)
+        for key in ("version", "java_version", "minestom_java_version", "minecraft_pack_version",
+                    "minecraft_data_version", "minecraft_version_range", "forge_loader_version_range"):
+            self.assertNotIn("| " + key + " |", summary)
+            self.assertIn(key, {pin["property"] for pin in report["pins"]})
+
+    def test_minestom_gradle_versions_are_grouped_with_minestom(self):
+        config, reader = self.baseline()
+        config.update(minestom_gradle_version="9.1.0", minestom_gradle_distribution_sha256="b" * 64)
+        reader.add("https://services.gradle.org/distributions/gradle-9.1.0-bin.zip.sha256", "b" * 64)
+        summary = markdown_summary(verify_config(config, {"common", "minestom"}, reader, pause=lambda _: None))
+        sections = {part.split("\n", 1)[0]: part for part in summary.split("#### ")[1:]}
+        for key in ("minestom_gradle_version", "minestom_gradle_distribution_sha256"):
+            self.assertIn("| " + key + " |", sections["Minestom"])
+            self.assertNotIn("| " + key + " |", sections["Build tooling"])
+        self.assertIn("| gradle_version |", sections["Build tooling"])
+
+    def test_hidden_configuration_errors_remain_visible_outside_dependency_tables(self):
+        config, reader = self.baseline()
+        config.update(version="invalid", new_library_version="1.0.0")
+        report = verify_config(config, set(), reader, pause=lambda _: None)
+        summary = markdown_summary(report)
+        self.assertEqual("failed", report["result"])
+        self.assertNotIn("| version |", summary)
+        self.assertNotIn("| new_library_version |", summary)
+        self.assertIn("#### Configuration diagnostics", summary)
+        self.assertIn("`version`", summary)
+        self.assertIn("`new_library_version`", summary)
 
     def test_java_gradle_and_range_scopes_describe_their_owners(self):
         config, reader = self.baseline()
