@@ -1,0 +1,62 @@
+plugins {
+    id 'application'
+}
+
+// Keep the template identity and dependency versions in one place. This build
+// is independent because Minestom needs Java 25 while Forge needs Gradle 8.
+def templateProperties = new Properties()
+file('../gradle.properties').withInputStream { templateProperties.load(it) }
+def templateProperty = { String name ->
+    def value = providers.gradleProperty(name).orElse(templateProperties.getProperty(name, '')).get()
+    if (value.isBlank()) {
+        throw new GradleException("Missing template property: ${name}")
+    }
+    value
+}
+
+group = templateProperty('group')
+version = templateProperty('version')
+def minecraftVersion = templateProperty('minecraft_version')
+def minestomVersion = templateProperty('minestom_version')
+def artifactName = "${templateProperty('mod_id')}-minestom-${minecraftVersion}"
+
+if (!minestomVersion.endsWith("-${minecraftVersion}")) {
+    throw new GradleException('minestom_version must target the configured minecraft_version')
+}
+
+base {
+    archivesName = artifactName
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(templateProperty('minestom_java_version').toInteger())
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "net.minestom:minestom:${minestomVersion}"
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.17'
+    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'me.n4th4not.modid.minestom.MinestomServer'
+    applicationName = artifactName
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    systemProperty 'template.minecraft.version', minecraftVersion
+    maxHeapSize = '1G'
+}
