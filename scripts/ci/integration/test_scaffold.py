@@ -151,6 +151,8 @@ class GradleScaffoldTest(unittest.TestCase):
             "    implementation \"org.slf4j:slf4j-api:${slf4j_version}\"\n"
             "}\n", encoding="utf-8")
         self.gradle(self.root, [":common:test"])
+        metadata = json.loads((self.root / "common/build/resources/main/pack.mcmeta").read_text(encoding="utf-8"))
+        self.assertEqual('Sample "Development"', metadata["pack"]["description"])
         report = self.root / "common/build/test-results/test/TEST-org.example.template.CommonClassTest.xml"
         self.assertTrue(report.is_file(), "The generated callback tests must actually run")
         suite = ET.parse(report).getroot()

@@ -148,8 +148,12 @@ processResources {
             'minecraft_pack_version'       : minecraft_pack_version
     ]
 
-    var jsonExpandProps = expandProps.collectEntries {
-        key, value -> [(key): value instanceof String ? value.replace("\n", "\\\\n") : value]
+    var jsonExpandProps = expandProps.collectEntries { key, value ->
+        if (value instanceof CharSequence) {
+            def quoted = groovy.json.JsonOutput.toJson(value.toString())
+            return [(key): quoted.substring(1, quoted.length() - 1)]
+        }
+        [(key): value]
     }
 
     filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']) {
