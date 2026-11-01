@@ -18,6 +18,10 @@ out
 build
 .gradle
 
+# Python CI tooling
+__pycache__/
+*.pyc
+
 # other
 eclipse
 run

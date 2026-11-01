@@ -1,12 +1,17 @@
-name: Build Minecraft 1.21.10
+name: Validate template or build project
 
 on:
   push:
   pull_request:
   workflow_dispatch:
     inputs:
+      repository_type:
+        description: Repository mode (auto uses GitHub's template flag)
+        type: choice
+        options: [auto, template, project]
+        default: auto
       update_mod_versions:
-        description: Update compatible mod dependencies before building
+        description: Update compatible mod dependencies before a project build
         type: boolean
         default: false
 
@@ -21,14 +26,69 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build and test ${{ matrix.loader }}
+  plan:
+    name: Select template checks or project builds
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        loader: [fabric, forge, neoforge]
+    outputs:
+      repository_type: ${{ steps.plan.outputs.repository_type }}
+      has_builds: ${{ steps.plan.outputs.has_builds }}
+      support_tests: ${{ steps.plan.outputs.support_tests }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test CI tooling, including a template without Java sources
+        run: |
+          python3 - <<'PY'
+          import unittest
+          suite = unittest.defaultTestLoader.discover('scripts/ci/tests')
+          if suite.countTestCases() == 0:
+              raise SystemExit('CI tooling has no tests.')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          PY
+      - name: Read GitHub repository type and discover configured targets
+        id: plan
+        env:
+          REPOSITORY_TYPE: ${{ inputs.repository_type || 'auto' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repository_is_template="$(python3 -c 'import json,sys; value=json.load(open(sys.argv[1])).get("repository",{}).get("is_template"); print(str(value).lower() if isinstance(value,bool) else "")' "$GITHUB_EVENT_PATH")"
+          if [ "$REPOSITORY_TYPE" = auto ] && [ -z "$repository_is_template" ]; then
+            repository_is_template="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.is_template')"
+          fi
+          plan_args=(--repository-type "$REPOSITORY_TYPE" --github-output "$GITHUB_OUTPUT")
+          if [ -n "$repository_is_template" ]; then
+            plan_args+=(--repository-is-template "$repository_is_template")
+          fi
+          python3 scripts/ci/plan.py "${plan_args[@]}"
+
+  template:
+    name: Validate reusable scaffold without application code
+    needs: plan
+    if: needs.plan.outputs.repository_type == 'template'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out scaffold
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Validate official Gradle wrapper binaries
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Check structure, configuration, resources and services
+        run: python3 scripts/ci/validate_template.py --report "$RUNNER_TEMP/template-validation.json"
+      - name: Upload template validation report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: template-validation
+          path: ${{ runner.temp }}/template-validation.json
+          if-no-files-found: warn
+
+  build_tools:
+    name: Test Gradle build tooling in a derived project
+    needs: plan
+    if: needs.plan.outputs.support_tests == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -37,30 +97,90 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Set up Gradle and validate wrapper
+      - name: Set up Gradle and validate wrappers
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-      - name: Test the dependency updater
-        if: matrix.loader == 'fabric'
+      - name: Run build tooling tests
         run: ./gradlew --no-daemon --max-workers=2 --stacktrace -p buildSrc test
-      - name: Build and run common and loader tests
-        run: ./gradlew --no-daemon --max-workers=2 --no-configuration-cache --stacktrace -PautoUpdateModVersions="$ORG_GRADLE_PROJECT_autoUpdateModVersions" :common:check :${{ matrix.loader }}:build
+      - name: Require executed build tooling tests
+        run: python3 scripts/ci/verify_results.py --modules buildSrc --report "$RUNNER_TEMP/build-tools-tests.json"
+      - name: Upload build tooling reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: reports-build-tools
+          path: |
+            buildSrc/build/reports/
+            buildSrc/build/test-results/
+            ${{ runner.temp }}/build-tools-tests.json
+          if-no-files-found: warn
+
+  build:
+    name: Build and test ${{ matrix.target }} in a derived project
+    needs: plan
+    if: needs.plan.outputs.has_builds == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - name: Set up Gradle and validate wrappers
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Build and test configured modloader
+        if: matrix.kind == 'mod'
+        env:
+          TARGET: ${{ matrix.target }}
+          HAS_COMMON: ${{ matrix.common }}
+        run: |
+          gradle_tasks=(":$TARGET:build")
+          if [ "$HAS_COMMON" = true ]; then
+            gradle_tasks=(:common:check "${gradle_tasks[@]}")
+          fi
+          ./gradlew --no-daemon --max-workers=2 --no-configuration-cache --stacktrace -PautoUpdateModVersions="$ORG_GRADLE_PROJECT_autoUpdateModVersions" "${gradle_tasks[@]}"
+      - name: Build and test standalone Minestom with its own wrapper
+        if: matrix.kind == 'minestom'
+        run: ./minestom/gradlew --no-daemon --max-workers=2 --no-configuration-cache --stacktrace -p minestom build
+      - name: Require executed tests for every application module
+        env:
+          TARGET: ${{ matrix.target }}
+          HAS_COMMON: ${{ matrix.common }}
+        run: |
+          modules=("$TARGET")
+          if [ "$HAS_COMMON" = true ]; then
+            modules+=(common)
+          fi
+          python3 scripts/ci/verify_results.py --modules "${modules[@]}" --report "$RUNNER_TEMP/application-tests.json"
       - name: Upload build and test reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: reports-${{ matrix.loader }}
+          name: reports-${{ matrix.target }}
           path: |
             gradle.properties
             common/build/reports/
             common/build/test-results/
-            buildSrc/build/reports/
-            buildSrc/build/test-results/
-            ${{ matrix.loader }}/build/reports/
-            ${{ matrix.loader }}/build/test-results/
+            ${{ matrix.target }}/build/reports/
+            ${{ matrix.target }}/build/test-results/
+            ${{ runner.temp }}/application-tests.json
           if-no-files-found: warn
       - name: Upload mod artifacts
+        if: matrix.kind == 'mod'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: mod-${{ matrix.loader }}-1.21.10
-          path: ${{ matrix.loader }}/build/libs/*.jar
+          name: mod-${{ matrix.target }}
+          path: ${{ matrix.target }}/build/libs/*.jar
+          if-no-files-found: error
+      - name: Upload standalone server distributions
+        if: matrix.kind == 'minestom'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: server-minestom
+          path: minestom/build/distributions/*
           if-no-files-found: error
