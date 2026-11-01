@@ -78,7 +78,8 @@ def validate_services(directory):
 
 
 def validate(root):
-    for name in ("settings.gradle", "build.gradle", "gradle.properties", "README.md", "AGENTS.md"):
+    for name in ("settings.gradle", "build.gradle", "gradle.properties", "gradle/modules.txt",
+                 "gradle/build-plan.gradle", "README.md", "AGENTS.md"):
         require(root / name)
     config = properties(root / "gradle.properties")
     for key in ("version", "group", "mod_id", "minecraft_version", "java_version"):
@@ -122,7 +123,7 @@ def validate(root):
         raise ValueError("No supported application target remains in the template")
     return {"result": "passed", "mode": "template", "modules": modules,
             "minestom": minestom, "java_sources_required": False,
-            "checks": ["project properties", "module declarations", "wrapper files and checksum declarations",
+            "checks": ["project properties", "shared module manifest and present directories", "wrapper files and checksum declarations",
                        "resource placeholders and syntax", "service declarations"],
             "application_builds_executed": False}
 

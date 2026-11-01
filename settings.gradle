@@ -1,4 +1,8 @@
 pluginManagement {
+    plugins {
+        id 'fabric-loom' version '1.13.6'
+        id 'net.neoforged.moddev' version '2.0.148'
+    }
     repositories {
         gradlePluginPortal()
         mavenCentral()
@@ -46,7 +50,45 @@ plugins {
 
 // This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
 rootProject.name = 'Minecraft-Mod-Template'
-include('common')
-include('fabric')
-include('neoforge')
-include('forge')
+
+def moduleManifest = file('gradle/modules.txt')
+if (!moduleManifest.isFile()) {
+    throw new GradleException('Missing module manifest: gradle/modules.txt')
+}
+def declaredModules = moduleManifest.readLines('UTF-8')
+        .collect { it.split('#', 2)[0].trim() }
+        .findAll { !it.isEmpty() }
+def seenModules = new LinkedHashSet<String>()
+declaredModules.each { name ->
+    if (!(name ==~ /[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*/) || !seenModules.add(name)) {
+        throw new GradleException("Invalid or duplicate module in gradle/modules.txt: ${name}")
+    }
+    if (name == 'minestom') {
+        throw new GradleException('Minestom uses a standalone build; keep it out of gradle/modules.txt')
+    }
+}
+if (!declaredModules.contains('common') || !file('common').isDirectory()) {
+    throw new GradleException('The required common/ module must be declared and present.')
+}
+
+def includedModules = []
+def excludedModules = []
+declaredModules.each { name ->
+    def directory = file(name)
+    if (!directory.exists() && !java.nio.file.Files.isSymbolicLink(directory.toPath())) {
+        excludedModules.add(name)
+    } else {
+        if (!directory.isDirectory() || !new File(directory, 'build.gradle').isFile()) {
+            throw new GradleException("Module ${name} is present but has no build.gradle")
+        }
+        include(name.replace('/', ':'))
+        includedModules.add(name)
+    }
+}
+
+logger.lifecycle('Modules disponibles dans le build racine : {}', includedModules.join(', '))
+logger.lifecycle('Modules exclus (dossiers absents) : {}', excludedModules ? excludedModules.join(', ') : 'aucun')
+logger.lifecycle('Tâches demandées : {}', gradle.startParameter.taskNames.join(', ') ?: '(tâches par défaut)')
+logger.lifecycle('Minestom : {}', file('minestom').exists()
+        ? 'build autonome, à lancer avec minestom/gradlew -p minestom'
+        : 'exclu (dossier absent)')

@@ -1,0 +1,63 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.work.DisableCachingByDefault
+
+@DisableCachingByDefault(because = 'The build plan must be displayed on every invocation')
+abstract class PrintBuildPlan extends DefaultTask {
+    @Input abstract Property<String> getBuildScope()
+    @Input abstract ListProperty<String> getCompiledModules()
+    @Input abstract ListProperty<String> getAbsentModules()
+    @Input abstract ListProperty<String> getUnselectedModules()
+
+    @TaskAction
+    void printPlan() {
+        logger.lifecycle('Périmètre du build : {}', buildScope.get())
+        logger.lifecycle('Modules avec compilation planifiée : {}', compiledModules.get().join(', ') ?: 'aucun')
+        logger.lifecycle('Modules exclus (dossiers absents) : {}', absentModules.get().join(', ') ?: 'aucun')
+        logger.lifecycle('Modules présents sans compilation planifiée : {}', unselectedModules.get().join(', ') ?: 'aucun')
+    }
+}
+
+// The standalone Minestom build reads the same manifest from its parent.
+def standalone = !rootProject.file('gradle/modules.txt').isFile()
+def templateDirectory = standalone ? rootProject.projectDir.parentFile : rootProject.projectDir
+def manifest = new File(templateDirectory, 'gradle/modules.txt')
+if (!manifest.isFile() || !new File(templateDirectory, 'common/build.gradle').isFile()) {
+    throw new GradleException('The template requires gradle/modules.txt and common/build.gradle')
+}
+def candidates = manifest.readLines('UTF-8').collect { it.split('#', 2)[0].trim() }.findAll { !it.isEmpty() } + ['minestom']
+if (!candidates.contains('common')) {
+    throw new GradleException('The required common module must be declared in gradle/modules.txt')
+}
+def available = candidates.findAll { new File(templateDirectory, it).isDirectory() }
+def absent = candidates.findAll { !new File(templateDirectory, it).exists() }
+
+def buildPlan = tasks.register('reportBuildPlan', PrintBuildPlan) {
+    group = 'help'
+    description = 'Report the actual compilation scope and absent modules before running tasks.'
+    buildScope = standalone ? 'Minestom autonome' : 'modloaders'
+    compiledModules.convention([])
+    absentModules = absent
+    unselectedModules = available
+}
+
+// Only plain values are retained by the report task, including on cache reuse.
+gradle.taskGraph.whenReady { graph ->
+    def compiled = graph.allTasks.findAll { it instanceof JavaCompile }.collect { task ->
+        standalone ? 'minestom' : task.project.path.substring(1).replace(':', '/')
+    }.unique().sort()
+    buildPlan.get().compiledModules.set(compiled)
+    buildPlan.get().unselectedModules.set(available.findAll { !(it in compiled) })
+}
+
+allprojects {
+    tasks.configureEach { task ->
+        if (task.path != ':reportBuildPlan') {
+            task.dependsOn(buildPlan)
+        }
+    }
+}

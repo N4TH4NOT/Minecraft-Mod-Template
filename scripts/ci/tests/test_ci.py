@@ -1,6 +1,7 @@
 """Fixtures exercise CI decisions without building or starting an application."""
 
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -8,7 +9,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from plan import discover, included_modules, make_plan, repository_type
+from plan import configured_modules, discover, make_plan, repository_type
 from validate_template import validate
 from verify_results import verify
 
@@ -18,8 +19,10 @@ class ScaffoldFixture(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.write("settings.gradle", "include('common')\ninclude 'fabric'\n")
-        for name in ("build.gradle", "common/build.gradle", "fabric/build.gradle", "README.md", "AGENTS.md"):
+        self.write("settings.gradle", "// Read module paths from gradle/modules.txt\n")
+        self.write("gradle/modules.txt", "common\nfabric\nforge\nneoforge\n")
+        for name in ("build.gradle", "common/build.gradle", "fabric/build.gradle",
+                     "gradle/build-plan.gradle", "README.md", "AGENTS.md"):
             self.write(name, "// scaffold\n")
         self.write("gradle.properties", "\n".join([
             "version=1.0.0", "group=example.template", "mod_id=example", "minecraft_version=1.21.10",
@@ -53,6 +56,12 @@ class ScaffoldFixture(unittest.TestCase):
         self.write("minestom/build.gradle", "plugins { id 'application' }\n")
         self.wrapper("minestom")
 
+    def all_targets(self):
+        for loader, descriptor in (("forge", "mods.toml"), ("neoforge", "neoforge.mods.toml")):
+            self.write(f"{loader}/build.gradle", "// scaffold\n")
+            self.write(f"{loader}/src/main/resources/META-INF/{descriptor}", 'modId = "${mod_id}"\n')
+        self.minestom()
+
 
 class PlanningTest(ScaffoldFixture):
     def test_template_without_main_or_test_java_never_schedules_builds(self):
@@ -62,6 +71,8 @@ class PlanningTest(ScaffoldFixture):
         self.assertEqual({"include": []}, plan["matrix"])
         self.assertFalse(plan["has_builds"])
         self.assertFalse(plan["support_tests"])
+        self.assertEqual(["common", "fabric", "minestom"], plan["included_modules"])
+        self.assertEqual(["forge", "neoforge"], plan["excluded_modules"])
         self.assertEqual("passed", validate(self.root)["result"])
 
     def test_derived_project_without_application_sources_fails(self):
@@ -70,7 +81,7 @@ class PlanningTest(ScaffoldFixture):
 
     def test_only_configured_targets_are_built_with_their_java_version(self):
         self.write("fabric/src/main/java/example/Main.java", "class Main {}")
-        self.write("forge/build.gradle", "// deliberately not included")
+        self.write("discarded/build.gradle", "// deliberately absent from the module manifest")
         self.minestom()
         matrix = make_plan(self.root, "project")["matrix"]["include"]
         self.assertEqual(["fabric", "minestom"], [row["target"] for row in matrix])
@@ -87,16 +98,13 @@ class PlanningTest(ScaffoldFixture):
         with self.assertRaisesRegex(ValueError, "is_template is unavailable"):
             repository_type("auto", None)
 
-    def test_comment_and_repository_filters_do_not_declare_modules(self):
-        self.write("settings.gradle", "// include('forge')\n/* include('neoforge') */\n"
-                   "includeGroup('not-a-project')\ninclude('fabric', 'common')\n")
-        self.assertEqual(["common", "fabric"], included_modules(self.root / "settings.gradle"))
+    def test_manifest_ignores_comments_and_blank_lines(self):
+        self.write("gradle/modules.txt", "# forge is optional\n\ncommon\nfabric\n")
+        self.assertEqual(["common", "fabric"], configured_modules(self.root / "gradle/modules.txt"))
 
-    def test_inline_comments_do_not_declare_modules_or_remove_quoted_urls(self):
-        self.write("settings.gradle", "include('fabric') // include('forge')\n"
-                   "include('common') /* include('neoforge') */\n"
-                   "def repository = 'https://example.org'\n")
-        self.assertEqual(["common", "fabric"], included_modules(self.root / "settings.gradle"))
+    def test_manifest_inline_comments_are_not_module_paths(self):
+        self.write("gradle/modules.txt", "common # forge\nfabric # neoforge\n")
+        self.assertEqual(["common", "fabric"], configured_modules(self.root / "gradle/modules.txt"))
 
     def test_declared_module_without_build_is_an_error(self):
         (self.root / "fabric/build.gradle").unlink()
@@ -104,7 +112,7 @@ class PlanningTest(ScaffoldFixture):
             discover(self.root)
 
     def test_minestom_must_not_be_included_in_the_gradle8_root(self):
-        self.write("settings.gradle", "include('minestom')\n")
+        self.write("gradle/modules.txt", "common\nfabric\nminestom\n")
         with self.assertRaisesRegex(ValueError, "standalone build"):
             discover(self.root)
 
@@ -112,6 +120,79 @@ class PlanningTest(ScaffoldFixture):
         self.write("minestom/build.gradle", "// missing its settings.gradle")
         with self.assertRaisesRegex(ValueError, "both minestom/settings.gradle"):
             discover(self.root)
+
+    def test_removing_each_target_directory_skips_only_that_target(self):
+        self.write("common/src/main/java/example/Shared.java", "class Shared {}")
+        for target in ("fabric", "forge", "neoforge", "minestom"):
+            with self.subTest(target=target):
+                self.all_targets()
+                if not (self.root / "fabric").exists():
+                    self.write("fabric/build.gradle", "// scaffold\n")
+                    self.write("fabric/src/main/resources/fabric.mod.json", '{"id":"${mod_id}"}')
+                shutil.rmtree(self.root / target)
+                matrix = make_plan(self.root, "project")["matrix"]["include"]
+                expected = {"fabric", "forge", "neoforge", "minestom"} - {target}
+                self.assertEqual(expected, {row["target"] for row in matrix})
+                self.assertEqual("passed", validate(self.root)["result"])
+                self.assertEqual([target], make_plan(self.root, "project")["excluded_modules"])
+
+    def test_removing_multiple_targets_keeps_the_remaining_target(self):
+        self.all_targets()
+        self.write("common/src/main/java/example/Shared.java", "class Shared {}")
+        for target in ("fabric", "forge", "minestom"):
+            shutil.rmtree(self.root / target)
+        matrix = make_plan(self.root, "project")["matrix"]["include"]
+        self.assertEqual(["neoforge"], [row["target"] for row in matrix])
+        self.assertEqual("passed", validate(self.root)["result"])
+
+    def test_minestom_only_keeps_required_common_and_removes_modloaders(self):
+        self.all_targets()
+        for module in ("fabric", "forge", "neoforge"):
+            shutil.rmtree(self.root / module)
+        self.write("minestom/src/main/java/example/Server.java", "class Server {}")
+        matrix = make_plan(self.root, "project")["matrix"]["include"]
+        self.assertEqual(["minestom"], [row["target"] for row in matrix])
+        self.assertEqual("passed", validate(self.root)["result"])
+
+    def test_removing_required_common_has_a_clear_error(self):
+        shutil.rmtree(self.root / "common")
+        with self.assertRaisesRegex(ValueError, "common module is required"):
+            discover(self.root)
+
+    def test_common_is_required_even_with_only_minestom(self):
+        self.minestom()
+        shutil.rmtree(self.root / "fabric")
+        shutil.rmtree(self.root / "common")
+        with self.assertRaisesRegex(ValueError, "common module is required"):
+            discover(self.root)
+
+    def test_required_common_must_remain_in_the_shared_manifest(self):
+        self.write("gradle/modules.txt", "fabric\n")
+        with self.assertRaisesRegex(ValueError, "common module is required"):
+            discover(self.root)
+
+    def test_present_empty_modloader_directory_is_an_error(self):
+        (self.root / "forge").mkdir()
+        with self.assertRaisesRegex(ValueError, "present but has no build.gradle"):
+            discover(self.root)
+
+    def test_present_empty_minestom_directory_is_an_error(self):
+        (self.root / "minestom").mkdir()
+        with self.assertRaisesRegex(ValueError, "both minestom/settings.gradle"):
+            discover(self.root)
+
+    def test_new_manifest_modules_can_be_discovered(self):
+        self.write("gradle/modules.txt", "common\nfabric\nextra/library\n")
+        self.write("extra/library/build.gradle", "// reusable library\n")
+        modules, _ = discover(self.root)
+        self.assertEqual(["common", "fabric", "extra/library"], modules)
+
+    def test_invalid_or_duplicate_manifest_paths_are_rejected(self):
+        for content in ("../outside\n", "/absolute\n", "common\ncommon\n"):
+            with self.subTest(content=content):
+                self.write("gradle/modules.txt", content)
+                with self.assertRaises(ValueError):
+                    discover(self.root)
 
 
 class TemplateValidationTest(ScaffoldFixture):

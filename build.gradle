@@ -1,9 +1,4 @@
-plugins {
-    // see https://fabricmc.net/develop/ for new versions
-    id 'fabric-loom' version '1.13.6' apply false
-    // see https://projects.neoforged.net/neoforged/moddevgradle for new versions
-    id 'net.neoforged.moddev' version '2.0.148' apply false
-}
+apply from: file('gradle/build-plan.gradle')
 
 def updateFlag = providers.gradleProperty('autoUpdateModVersions').orElse('false').get()
 if (me.n4th4not.gradle.AutoModVersionUpdates.shouldUpdate(updateFlag, gradle.startParameter.taskNames)) {

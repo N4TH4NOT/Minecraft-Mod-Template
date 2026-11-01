@@ -2,6 +2,8 @@ plugins {
     id 'application'
 }
 
+apply from: file('../gradle/build-plan.gradle')
+
 // Keep the template identity and dependency versions in one place. This build
 // is independent because Minestom needs Java 25 while Forge needs Gradle 8.
 def templateProperties = new Properties()

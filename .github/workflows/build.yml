@@ -62,6 +62,34 @@ jobs:
             plan_args+=(--repository-is-template "$repository_is_template")
           fi
           python3 scripts/ci/plan.py "${plan_args[@]}"
+      - name: Report compilation scope and excluded modules before builds
+        env:
+          CI_REPOSITORY_MODE: ${{ steps.plan.outputs.repository_type }}
+          CI_INCLUDED_MODULES: ${{ steps.plan.outputs.included_modules }}
+          CI_EXCLUDED_MODULES: ${{ steps.plan.outputs.excluded_modules }}
+          CI_BUILD_MATRIX: ${{ steps.plan.outputs.matrix }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          included = json.loads(os.environ['CI_INCLUDED_MODULES'])
+          excluded = json.loads(os.environ['CI_EXCLUDED_MODULES'])
+          matrix = json.loads(os.environ['CI_BUILD_MATRIX'])['include']
+          compiled = {row['target'] for row in matrix}
+          if any(row['common'] for row in matrix):
+              compiled.add('common')
+          describe = lambda names: ', '.join(sorted(names)) or 'aucun'
+          lines = [
+              'Mode du dépôt : ' + os.environ['CI_REPOSITORY_MODE'],
+              'Modules avec compilation planifiée : ' + describe(compiled),
+              'Modules exclus (dossiers absents) : ' + describe(excluded),
+              'Modules présents sans compilation planifiée : ' + describe(set(included) - compiled),
+          ]
+          print('\n'.join(lines))
+          with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as summary:
+              summary.write('\n'.join('- ' + line for line in lines) + '\n')
+          PY
 
   template:
     name: Validate reusable scaffold without application code
