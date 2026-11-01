@@ -41,7 +41,7 @@ class GradleScaffoldTest(unittest.TestCase):
             self.assertTrue(os.environ.get(name) and Path(os.environ[name]).is_dir(),
                             "Configured Java installation is missing: " + name)
         result = subprocess.run(
-            [str(REPOSITORY / "gradlew"), "--no-daemon", "--console=plain",
+            [str(REPOSITORY / "gradlew"), "--no-daemon", "--console=plain", "--stacktrace",
              "--configuration-cache" if configuration_cache else "--no-configuration-cache",
              "-Porg.gradle.java.installations.auto-detect=false",
              "-Porg.gradle.java.installations.auto-download=false",

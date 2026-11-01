@@ -3,7 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
-apply from: rootProject.file('gradle/template-properties.gradle')
+// Apply external scripts through the target Project, which owns their classloader scope.
+project.apply from: rootProject.file('gradle/template-properties.gradle')
 
 def javaProperty = project.hasProperty("${project.name}_java_version") ? "${project.name}_java_version" : 'java_version'
 ext.effectiveJavaVersion = templateProperty(javaProperty).toInteger()
