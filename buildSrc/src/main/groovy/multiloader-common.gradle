@@ -26,16 +26,14 @@ repositories {
         filter { includeGroupAndSubgroups('org.spongepowered') }
     }
     exclusiveContent {
-        forRepositories(
-                maven {
-                    name = 'ParchmentMC'
-                    url = 'https://maven.parchmentmc.org/'
-                },
-                maven {
-                    name = "NeoForge"
-                    url = 'https://maven.neoforged.net/releases'
-                }
-        )
+        // The original Parchment host redirects to JFrog. Use NeoForge's
+        // maintained mirror directly, also available to the Fabric module.
+        forRepository {
+            maven {
+                name = "NeoForge"
+                url = 'https://maven.neoforged.net/releases'
+            }
+        }
         filter { includeGroup('org.parchmentmc.data') }
     }
     maven {
@@ -145,9 +143,12 @@ publishing {
             from components.java
         }
     }
-    repositories {
-        maven {
-            url System.getenv('local_maven_url')
+    def localMavenUrl = providers.environmentVariable('local_maven_url')
+    if (localMavenUrl.isPresent()) {
+        repositories {
+            maven {
+                url = uri(localMavenUrl.get())
+            }
         }
     }
 }
