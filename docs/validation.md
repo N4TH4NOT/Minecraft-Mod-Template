@@ -22,7 +22,14 @@ Un job distinct exécute le vrai initialiseur Gradle sur des fixtures
 temporaires. Il vérifie le rendu des fichiers, l’identité du projet, la
 préservation des fichiers existants et l’idempotence. Il configure aussi
 deux modules sans sources pour vérifier les scripts centraux et le bilan
-avec réutilisation du cache. Aucune application n’est compilée.
+avec réutilisation du cache.
+
+Une autre fixture génère le véritable `common/` d’exemple, puis compile
+`CommonClass` et `PlatformContext` avec les conventions Java. Elle exécute
+leurs tests JUnit pour vérifier que l’initialisation appelle le prédicat
+fourni par la cible. Cette fixture est isolée : elle ne résout ni ne lance
+Minecraft ou un modloader. Il s’agit d’un test de contrat de l’API générée ;
+les applications et les artefacts du projet nécessitent le parcours projet.
 
 ## Versions publiées
 
@@ -92,9 +99,10 @@ elle vérifie les presets sans modifier les dossiers de l’application.
 | Fabric / Forge / NeoForge | Java 21, wrapper racine Gradle 8 | Compilation, tests partagés et du loader, artefacts |
 | Minestom | Java 25, wrapper `minestom/` Gradle 9 | Compilation, démarrage/arrêt et protocole réseau, distribution |
 
-Les tests de métadonnées des mods vérifient les ressources traitées, les
-points d’entrée et la découverte des services. Ils ne lancent pas un client
-ou serveur Minecraft. Le test Minestom lance réellement le moteur en local.
+Les tests des mods vérifient les ressources traitées et les
+points d’entrée. Les tests de `common/` vérifient le contrat du contexte et
+l’appel au prédicat fourni par la cible. Ils ne lancent pas un client ou
+serveur Minecraft. Le test Minestom lance réellement le moteur en local.
 
 Un projet sans code à compiler échoue avec une explication. Pour chaque
 suite applicative attendue, les rapports doivent exister et compter au

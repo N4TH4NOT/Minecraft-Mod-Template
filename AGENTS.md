@@ -41,6 +41,12 @@ Java 21 et Gradle 8. Ne pas l’inclure dans le build Gradle des modloaders :
 `common/` dépend des classes Minecraft vanilla, absentes de Minestom.
 Les propriétés partagées restent centralisées dans `gradle.properties`.
 
+Fabric, Forge et NeoForge importent directement les classes de `common/`.
+Leurs points d’entrée transmettent un `PlatformContext` à `CommonClass.init` :
+nom de plateforme, indicateur de développement et `Predicate<String>` pour
+consulter les mods chargés. Conserver ce passage explicite du contexte ;
+les appels aux API propres aux modloaders restent dans leurs modules.
+
 `common/` est obligatoire. Les cibles `fabric/`, `forge/`, `neoforge/` et
 `minestom/` sont optionnelles : un dossier cible absent doit être exclu
 automatiquement de Gradle et de la CI. Déclarer `modules`, `required_modules`
@@ -133,8 +139,12 @@ tests applicatifs. Pour un projet dérivé, compiler les cibles présentes
 et vérifier leurs résultats de tests. Les tests des scripts de CI restent
 dans `scripts/ci/tests/` et s’exécutent eux aussi dans GitHub Actions.
 Les tests d’intégration dans `scripts/ci/integration/` exécutent Gradle sur
-des fixtures sans sources applicatives pour valider l’initialisation et
-les builds centralisés, y compris le cache de configuration.
+des fixtures isolées pour valider l’initialisation et les builds centralisés,
+y compris le cache de configuration. Une fixture compile aussi le code
+commun d’exemple généré et exécute ses tests de contrat `PlatformContext`
+avec les seules conventions Java, sans résoudre ni lancer Minecraft ou
+un modloader. Ce contrôle ne vaut pas compilation complète ou validation
+des artefacts du produit. Il s’exécute uniquement dans GitHub Actions.
 
 Avant de lancer une construction, informer l’utilisateur des modules dont
 la compilation est prévue et des modules exclus. Afficher également ce

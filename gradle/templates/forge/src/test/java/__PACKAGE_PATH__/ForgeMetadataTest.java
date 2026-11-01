@@ -3,14 +3,12 @@ package __PACKAGE__;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import __PACKAGE__.platform.services.IPlatformHelper;
 import net.minecraftforge.fml.common.Mod;
 import org.junit.jupiter.api.Test;
 import org.tomlj.Toml;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ServiceLoader;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,14 +50,6 @@ class ForgeMetadataTest {
                 }
             }
         }
-    }
-
-    @Test
-    void platformHelperIsDiscoverableWithoutStartingMinecraft() {
-        var helpers = ServiceLoader.load(IPlatformHelper.class).stream()
-                .map(ServiceLoader.Provider::get).toList();
-        assertEquals(1, helpers.size(), "Exactly one platform implementation must be packaged");
-        assertEquals("Forge", helpers.getFirst().getPlatformName());
     }
 
     private String resource(String name) throws IOException {

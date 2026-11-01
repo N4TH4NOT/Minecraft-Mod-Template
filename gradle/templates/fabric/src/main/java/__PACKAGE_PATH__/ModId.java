@@ -3,6 +3,7 @@ package __PACKAGE__;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 
 public class ModId
     implements ModInitializer {
@@ -18,7 +19,8 @@ public class ModId
 
         // Use Fabric to bootstrap the Common mod.
         Constants.LOG.info("Hello Fabric world!");
-        CommonClass.init();
+        CommonClass.init(new PlatformContext("Fabric", FabricLoader.getInstance().isDevelopmentEnvironment(),
+                modId -> FabricLoader.getInstance().isModLoaded(modId)));
 
         //Register config and use json serializer/deserializer
         CONFIG = AutoConfig.register(FabricModIdConfig.class, GsonConfigSerializer::new).getConfig();

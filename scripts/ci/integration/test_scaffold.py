@@ -1,4 +1,4 @@
-"""Exercise the real Gradle initializer without compiling application sources."""
+"""Exercise Gradle scaffolding and its generated shared API in isolated fixtures."""
 
 import os
 import json
@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -34,9 +35,17 @@ class GradleScaffoldTest(unittest.TestCase):
         (self.root / "gradle.properties").write_text(configuration, encoding="utf-8")
 
     def gradle(self, directory, tasks, succeeds=True, configuration_cache=False):
+        installations = ["JAVA_HOME_" + version + "_X64"
+                         for version in os.environ["CI_JAVA_VERSIONS"].split()]
+        for name in installations:
+            self.assertTrue(os.environ.get(name) and Path(os.environ[name]).is_dir(),
+                            "Configured Java installation is missing: " + name)
         result = subprocess.run(
             [str(REPOSITORY / "gradlew"), "--no-daemon", "--console=plain",
              "--configuration-cache" if configuration_cache else "--no-configuration-cache",
+             "-Porg.gradle.java.installations.auto-detect=false",
+             "-Porg.gradle.java.installations.auto-download=false",
+             "-Porg.gradle.java.installations.fromEnv=" + ",".join(installations),
              "-p", str(directory), *tasks],
             cwd=REPOSITORY, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, timeout=300,
@@ -124,6 +133,32 @@ class GradleScaffoldTest(unittest.TestCase):
                     self.assertFalse((self.root / excluded).exists())
                 if attempt:
                     self.assertIn("Configuration cache entry reused", output)
+
+    def test_generated_common_context_tests_run_without_starting_a_modloader(self):
+        # Exercise the real generated Java API and callback contract without
+        # resolving or starting Minecraft, Forge, Fabric or NeoForge.
+        (self.root / "common").mkdir()
+        self.bootstrap()
+        shutil.copytree(REPOSITORY / "buildSrc", self.root / "buildSrc",
+                        ignore=shutil.ignore_patterns("build", ".gradle", "*.class"))
+        (self.root / "settings.gradle").write_text("include('common')\n", encoding="utf-8")
+        (self.root / "build.gradle").write_text(
+            "apply from: file('gradle/template-properties.gradle')\n"
+            "apply from: file('gradle/build-plan.gradle')\n", encoding="utf-8")
+        (self.root / "common/build.gradle").write_text(
+            "plugins { id 'multiloader-common' }\n"
+            "dependencies {\n"
+            "    implementation \"org.slf4j:slf4j-api:${slf4j_version}\"\n"
+            "}\n", encoding="utf-8")
+        self.gradle(self.root, [":common:test"])
+        report = self.root / "common/build/test-results/test/TEST-org.example.template.CommonClassTest.xml"
+        self.assertTrue(report.is_file(), "The generated callback tests must actually run")
+        suite = ET.parse(report).getroot()
+        executed = int(suite.get("tests", "0")) - int(suite.get("skipped", "0"))
+        self.assertGreater(executed, 0)
+        self.assertEqual("0", suite.get("failures"))
+        self.assertEqual("0", suite.get("errors"))
+        print(f"Generated CommonClassTest: {executed} tests executed without failures or errors")
 
 
 if __name__ == "__main__":

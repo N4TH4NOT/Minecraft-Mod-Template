@@ -17,6 +17,7 @@ neoForge {
 }
 
 dependencies {
+    testRuntimeOnly "org.slf4j:slf4j-api:${slf4j_version}"
     compileOnly group: 'org.spongepowered', name: 'mixin', version: mixin_version
     // Each loader packages the matching MixinExtras runtime.
     compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: mixinextras_version

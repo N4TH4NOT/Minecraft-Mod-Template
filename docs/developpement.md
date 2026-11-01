@@ -40,6 +40,35 @@ n’existe pas de configuration centrale correspondante.
 Minestom reste un build autonome : son petit `settings.gradle` sélectionne
 `gradle/modules/minestom.gradle` et son wrapper fournit sa distribution Gradle.
 
+## Contexte du code partagé
+
+Les modules Fabric, Forge et NeoForge importent directement les classes de
+`common/`, qui conserve l’accès aux API Minecraft vanilla. Chaque point
+d’entrée appelle `CommonClass.init` avec un `PlatformContext`. Ce record
+contient le nom de plateforme, l’indicateur de développement et un
+`Predicate<String>` chargé de consulter les mods présents.
+
+Par exemple, dans le point d’entrée Fabric, avec `FabricLoader` importé
+depuis `net.fabricmc.loader.api` :
+
+```java
+var loader = FabricLoader.getInstance();
+var context = new PlatformContext("Fabric", loader.isDevelopmentEnvironment(),
+        loader::isModLoaded);
+CommonClass.init(context);
+```
+
+Dans le code commun, la consultation passe par
+`context.isModLoaded().test(modId)`. Forge et NeoForge fournissent leur propre
+callback au même point d’entrée partagé, une fois leur API disponible.
+Les appels aux API du modloader restent dans le module de la cible.
+Minestom conserve son initialisation autonome et sa propre API.
+
+Le test de contrat du contexte emploie un prédicat de test, vérifie
+l’identifiant demandé et les valeurs requises par le record. La CI compile
+également cet exemple généré dans une fixture isolée ; les constructions
+complètes des mods restent couvertes par le parcours projet.
+
 ## Dossiers absents ou vides
 
 Un dossier absent reste exclu. `common/` est obligatoire et ne peut pas

@@ -247,9 +247,11 @@ class PlanningTest(ScaffoldFixture):
     def test_module_toolchains_and_gradle_runtime_are_independent(self):
         self.write("fabric/src/main/java/example/Main.java", "class Main {}")
         self.configure(common_java_version="23", fabric_java_version="22", gradle_java_version="21")
-        row = make_plan(self.root, "project")["matrix"]["include"][0]
+        plan = make_plan(self.root, "project")
+        row = plan["matrix"]["include"][0]
         self.assertEqual("21", row["java"])
         self.assertEqual("22\n23\n21", row["java_versions"])
+        self.assertEqual("23\n21", plan["scaffold_java_versions"])
 
     def test_standalone_registry_can_be_empty_when_minestom_is_not_selected(self):
         self.configure(modules="common,fabric", standalone_modules="")

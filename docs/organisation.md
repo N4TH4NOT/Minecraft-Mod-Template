@@ -1,6 +1,7 @@
 # Organisation du dépôt
 
-- `common/` : sources et ressources partagées.
+- `common/` : sources et ressources partagées par les mods ; `PlatformContext`
+  porte les informations et le callback transmis par chaque modloader.
 - `fabric/`, `forge/`, `neoforge/` : implémentations des modloaders.
 - `minestom/` : application serveur indépendante, avec `settings.gradle`,
   son wrapper Gradle et ses sources ; son build est centralisé avec les autres.
@@ -17,7 +18,8 @@
 - `.github/workflows/` : compilation et tests dans GitHub Actions.
 - `scripts/ci/` : sélection du parcours de CI et contrôles du template ;
   `scripts/ci/tests/` contient leurs tests unitaires et `scripts/ci/integration/`
-  leurs tests avec Gradle sur des fixtures sans code applicatif.
+  les fixtures Gradle isolées d’initialisation, de configuration et de contrat
+  du contexte commun généré. Ces dernières ne construisent pas les applications.
 - `scripts/ci/validate_published_versions.py` : contrôle en lecture seule
   de l’existence des versions dans les métadonnées des dépôts officiels.
 - `docs/` : documentation complémentaire.

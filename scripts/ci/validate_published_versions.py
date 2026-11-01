@@ -191,7 +191,7 @@ MAVEN_PINS = {
     "junit_version": (CENTRAL, "org.junit", "junit-bom", {"common", "fabric", "forge", "neoforge", "minestom", "buildsrc"}),
     "gson_version": (CENTRAL, "com.google.code.gson", "gson", {"common", "fabric", "forge", "neoforge"}),
     "tomlj_version": (CENTRAL, "org.tomlj", "tomlj", {"forge", "neoforge"}),
-    "slf4j_version": (CENTRAL, "org.slf4j", "slf4j-simple", {"minestom"}),
+    "slf4j_version": (CENTRAL, "org.slf4j", "slf4j-api", {"common", "minestom"}),
     "jopt_simple_version": (CENTRAL, "net.sf.jopt-simple", "jopt-simple", {"forge"}),
 }
 PARAMETERS = {"minecraft_data_version", "minecraft_pack_version", "minecraft_version_range",
@@ -245,6 +245,8 @@ def verify_config(config, active, reader=None, **remote_options):
                 if key == "parchment_version":
                     artifact += config["parchment_minecraft"]
                 artifacts = [artifact + target for target in ("common", "fabric", "forge", "neoforge") if target in active] if key == "mixinextras_version" else [artifact]
+                if key == "slf4j_version" and "minestom" in active:
+                    artifacts.append("slf4j-simple")
                 for artifact in artifacts:
                     published_pom(remote, sources, repository, group, artifact, value)
                 entry["detail"] = "The official Maven repository publishes the requested POM identity."

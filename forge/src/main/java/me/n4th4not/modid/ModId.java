@@ -1,6 +1,8 @@
 package me.n4th4not.modid;
 
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.loading.FMLLoader;
 
 @Mod(Constants.MOD_ID)
 public class ModId {
@@ -13,7 +15,8 @@ public class ModId {
 
         // Use Forge to bootstrap the Common mod.
         Constants.LOG.info("Hello Forge world!");
-        CommonClass.init();
+        CommonClass.init(new PlatformContext("Forge", !FMLLoader.isProduction(),
+                modId -> ModList.get().isLoaded(modId)));
 
     }
 }

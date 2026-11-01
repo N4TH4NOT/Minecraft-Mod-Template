@@ -4,14 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.terraformersmc.modmenu.api.ModMenuApi;
-import me.n4th4not.modid.platform.services.IPlatformHelper;
 import net.fabricmc.api.ModInitializer;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
-import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -58,14 +56,6 @@ class FabricMetadataTest {
                 }
             }
         }
-    }
-
-    @Test
-    void platformHelperIsDiscoverableWithoutStartingMinecraft() {
-        var helpers = ServiceLoader.load(IPlatformHelper.class).stream()
-                .map(ServiceLoader.Provider::get).toList();
-        assertEquals(1, helpers.size(), "Exactly one platform implementation must be packaged");
-        assertEquals("Fabric", helpers.getFirst().getPlatformName());
     }
 
     private String resource(String name) throws IOException {

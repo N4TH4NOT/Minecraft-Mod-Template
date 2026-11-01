@@ -5,6 +5,11 @@ Forge et NeoForge sous Java 21, ou serveur Minestom sous Java 25.
 `common/` partage le code des mods ; `minestom/` est une application
 autonome, avec son propre build Gradle.
 
+Fabric, Forge et NeoForge appellent directement les classes de `common/`.
+Chaque point d’entrée transmet un `PlatformContext` à `CommonClass.init` :
+nom de plateforme, mode de développement et fonction de recherche des mods.
+Voir [l’exemple de contexte](docs/developpement.md#contexte-du-code-partagé).
+
 ## Configuration
 
 Les versions du jeu, des modloaders et des dépendances du mod sont définies
@@ -47,8 +52,9 @@ statut GitHub du dépôt :
 
 - **Template** (`is_template=true`) : validation de la structure, des
   configurations et de l’outillage de CI, avec des tests d’initialisation
-  sur des fixtures Gradle. L’absence de code applicatif est acceptée ;
-  aucune compilation applicative n’est exigée.
+  sur des fixtures Gradle isolées. Une fixture compile aussi l’API de
+  contexte générée et teste son callback. L’absence de code métier est
+  acceptée ; les applications du dépôt ne sont pas construites dans ce mode.
 - **Projet dérivé** : compilation et tests des seules cibles présentes,
   avec les versions de Java et de Gradle adaptées à chaque cible. Les
   rapports et les artefacts sont conservés. Une suite absente ou entièrement
@@ -65,7 +71,8 @@ et Minecraft. Ce contrôle ne télécharge aucun JAR ou ZIP et ne modifie pas
 Une version introuvable ou une vérification réseau impossible empêche la validation.
 
 En mode projet, les tests vérifient les métadonnées générées, les classes
-d’entrée, les mixins, les services de plateforme et le format des ressources.
+d’entrée, les mixins, le contexte fourni au code partagé et le format des
+ressources.
 Ils ne remplacent pas un essai de démarrage du jeu.
 
 Dans ce même mode, le test Minestom démarre et arrête un serveur local

@@ -253,6 +253,17 @@ class PublicationCatalogTest(unittest.TestCase):
         self.assertIn(fabric, reader.calls)
         self.assertFalse(any("mixinextras-forge" in url or "mixinextras-neoforge" in url for url in reader.calls))
 
+    def test_shared_test_logging_api_and_minestom_provider_are_confirmed(self):
+        config, reader = self.baseline()
+        config["slf4j_version"] = "2.0.17"
+        api = publish(reader, CENTRAL, "org.slf4j", "slf4j-api", "2.0.17")
+        provider = publish(reader, CENTRAL, "org.slf4j", "slf4j-simple", "2.0.17")
+        report = verify_config(config, {"common", "minestom"}, reader, pause=lambda _: None)
+        pin = next(pin for pin in report["pins"] if pin["property"] == "slf4j_version")
+        self.assertEqual("checked", pin["status"])
+        self.assertIn(api, reader.calls)
+        self.assertIn(provider, reader.calls)
+
 
 if __name__ == "__main__":
     unittest.main()

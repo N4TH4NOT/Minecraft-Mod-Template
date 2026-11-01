@@ -153,6 +153,7 @@ def make_plan(root, kind):
         "support_tests": kind == "project" and bool(loaders) and has_sources(root / "buildSrc", "test"),
         "gradle_java_version": language_version(config, "gradle_java_version"),
         "support_java_versions": java_setup(config, ["buildsrc"])[1],
+        "scaffold_java_versions": java_setup(config, ["common", "buildsrc"])[1],
         "declared_modules": declared, "included_modules": included,
         "excluded_modules": [module for module in declared if module not in included],
         "initialization_modules": initializing,

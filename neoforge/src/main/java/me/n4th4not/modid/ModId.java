@@ -3,6 +3,8 @@ package me.n4th4not.modid;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.FMLLoader;
 
 @Mod(Constants.MOD_ID)
 public class ModId {
@@ -15,6 +17,7 @@ public class ModId {
 
         // Use NeoForge to bootstrap the Common mod.
         Constants.LOG.info("Hello NeoForge world!");
-        CommonClass.init();
+        CommonClass.init(new PlatformContext("NeoForge", !FMLLoader.getCurrent().isProduction(),
+                modId -> ModList.get().isLoaded(modId)));
     }
 }
